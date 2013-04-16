@@ -26,13 +26,13 @@ class SigrokMeter:
         self.builder = Gtk.Builder()
         self.builder.add_from_file("sigrok-meter.glade")
         self.builder.connect_signals(self)
-        self.win = self.builder.get_object("main-window")
+        self.win = self.builder.get_object("mainwindow")
         self.win.show_all()
 
-    def onDeleteWindow(self, *args):
+    def on_quit(self, *args):
         Gtk.main_quit(*args)
 
-    def on_imagemenuitemAbout_activate(self, action):
+    def on_about(self, action):
         about = self.builder.get_object("aboutdialog")
         about.run()
         about.hide()

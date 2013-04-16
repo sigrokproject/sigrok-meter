@@ -10,6 +10,7 @@
     <property name="program_name">sigrok-meter</property>
     <property name="version">0.1.0</property>
     <property name="website">http://www.sigrok.org</property>
+    <property name="website_label" translatable="yes">http://www.sigrok.org</property>
     <property name="license" translatable="yes">GNU GPL, version 3 or later</property>
     <property name="logo">sigrok-logo-notext.png</property>
     <property name="license_type">gpl-3-0</property>
@@ -36,13 +37,13 @@
       </object>
     </child>
   </object>
-  <object class="GtkWindow" id="main-window">
+  <object class="GtkWindow" id="mainwindow">
     <property name="can_focus">False</property>
     <property name="title" translatable="yes">sigrok-meter</property>
     <property name="default_width">320</property>
     <property name="default_height">200</property>
     <property name="icon">sigrok-logo-notext.png</property>
-    <signal name="delete-event" handler="onDeleteWindow" swapped="no"/>
+    <signal name="delete-event" handler="on_quit" swapped="no"/>
     <child>
       <object class="GtkBox" id="box1">
         <property name="visible">True</property>
@@ -71,7 +72,7 @@
                         <property name="can_focus">False</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">True</property>
-                        <signal name="activate" handler="onDeleteWindow" swapped="no"/>
+                        <signal name="activate" handler="on_quit" swapped="no"/>
                       </object>
                     </child>
                   </object>
@@ -97,7 +98,7 @@
                         <property name="can_focus">False</property>
                         <property name="use_underline">True</property>
                         <property name="use_stock">True</property>
-                        <signal name="activate" handler="on_imagemenuitemAbout_activate" swapped="no"/>
+                        <signal name="activate" handler="on_about" swapped="no"/>
                       </object>
                     </child>
                   </object>
