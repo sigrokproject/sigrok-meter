@@ -1,0 +1,86 @@
+-------------------------------------------------------------------------------
+README
+-------------------------------------------------------------------------------
+
+The sigrok project aims at creating a portable, cross-platform,
+Free/Libre/Open-Source signal analysis software suite that supports various
+device types (such as logic analyzers, oscilloscopes, multimeters, and more).
+
+sigrok-meter is special-purpose GUI for libsigrok (written in Python3, using
+PyGObject and GTK+3) which supports certain classes of test & measurement
+devices that usually provide slowly-updating measurement values, such as
+multimeters or dataloggers.
+
+It does specifically NOT support logic analyzers, oscilloscopes, and
+mixed-signal oscilloscopes (MSOs).
+
+
+Status
+------
+
+There have been no official tarball releases, yet.
+
+Distro packagers should NOT package this, yet.
+
+
+Requirements
+------------
+
+ - git
+ - Python >= 3.0
+ - PyGObject
+ - GTK+ >= 3.0
+ - libsigrok >= 0.2.0
+
+
+Building and installing
+-----------------------
+
+In order to get the sigrok-meter source code and build it, run:
+
+ $ git clone git://sigrok.org/sigrok-meter
+ $ cd sigrok-meter
+ $ ./sigrok-meter
+
+For installing sigrok-meter:
+
+ TODO.
+
+See INSTALL or the following wiki page for more (OS-specific) instructions:
+
+ http://sigrok.org/wiki/Building
+
+
+Copyright and license
+---------------------
+
+sigrok-meter is licensed under the terms of the GNU General Public License
+(GPL), version 3 or later.
+
+While some individual source code files are licensed under the GPLv2+, and
+some files are licensed under the GPLv3+, this doesn't change the fact that
+the program as a whole is licensed under the terms of the GPLv3+.
+
+Please see the individual source files for the full list of copyright holders.
+
+
+Mailing lists
+-------------
+
+There are two mailing lists for sigrok/sigrok-meter:
+
+ https://lists.sourceforge.net/lists/listinfo/sigrok-devel
+ https://lists.sourceforge.net/lists/listinfo/sigrok-commits
+
+
+IRC
+---
+
+You can find the sigrok developers in the #sigrok IRC channel on Freenode.
+
+
+Website
+-------
+
+ http://sigrok.org/wiki/Sigrok-meter
+
