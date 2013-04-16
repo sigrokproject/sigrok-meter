@@ -20,6 +20,7 @@
 ##
 
 from gi.repository import Gtk
+import libsigrok
 
 class SigrokMeter:
     def __init__(self):
@@ -34,10 +35,14 @@ class SigrokMeter:
 
     def on_about(self, action):
         about = self.builder.get_object("aboutdialog")
+        sr_pkg = libsigrok.sr_package_version_string_get()
+        sr_lib = libsigrok.sr_lib_version_string_get()
+        s = "Using libsigrok %s (lib version %s)." % (sr_pkg, sr_lib)
+        about.set_comments(s)
         about.run()
         about.hide()
 
 if __name__ == '__main__':
-	SigrokMeter()
-	Gtk.main()
+        SigrokMeter()
+        Gtk.main()
 
