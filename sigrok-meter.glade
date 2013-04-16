@@ -10,7 +10,7 @@
     <property name="program_name">sigrok-meter</property>
     <property name="version">0.1.0</property>
     <property name="website">http://www.sigrok.org</property>
-    <property name="website_label" translatable="yes">http://www.sigrok.org</property>
+    <property name="website_label">http://www.sigrok.org</property>
     <property name="license" translatable="yes">GNU GPL, version 3 or later</property>
     <property name="logo">sigrok-logo-notext.png</property>
     <property name="license_type">gpl-3-0</property>
