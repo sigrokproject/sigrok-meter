@@ -21,11 +21,15 @@
 
 from gi.repository import Gtk
 
+# Handler class for various GTK+ signals.
+class Handler:
+    def onDeleteWindow(self, *args):
+        Gtk.main_quit(*args)
+
 builder = Gtk.Builder()
 builder.add_from_file("sigrok-meter.glade")
-
+builder.connect_signals(Handler())
 win = builder.get_object("main-window")
-win.connect("delete-event", Gtk.main_quit)
 win.show_all()
 Gtk.main()
 
