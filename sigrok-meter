@@ -21,19 +21,23 @@
 
 from gi.repository import Gtk
 
-# Handler class for various GTK+ signals.
-class Handler:
+class SigrokMeter:
+    def __init__(self):
+        self.builder = Gtk.Builder()
+        self.builder.add_from_file("sigrok-meter.glade")
+        self.builder.connect_signals(self)
+        self.win = self.builder.get_object("main-window")
+        self.win.show_all()
+
     def onDeleteWindow(self, *args):
         Gtk.main_quit(*args)
-    def on_imagemenuitemAbout_activate(self, *args):
-        about = builder.get_object("aboutdialog")
+
+    def on_imagemenuitemAbout_activate(self, action):
+        about = self.builder.get_object("aboutdialog")
         about.run()
         about.hide()
 
-builder = Gtk.Builder()
-builder.add_from_file("sigrok-meter.glade")
-builder.connect_signals(Handler())
-win = builder.get_object("main-window")
-win.show_all()
-Gtk.main()
+if __name__ == '__main__':
+	SigrokMeter()
+	Gtk.main()
 
