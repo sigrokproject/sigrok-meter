@@ -25,6 +25,10 @@ from gi.repository import Gtk
 class Handler:
     def onDeleteWindow(self, *args):
         Gtk.main_quit(*args)
+    def on_imagemenuitemAbout_activate(self, *args):
+        about = builder.get_object("aboutdialog")
+        about.run()
+        about.hide()
 
 builder = Gtk.Builder()
 builder.add_from_file("sigrok-meter.glade")
