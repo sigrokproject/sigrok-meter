@@ -19,30 +19,77 @@
 ## Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 ##
 
-from gi.repository import Gtk
-import libsigrok
+from multiprocessing import Process, Queue
+from gi.repository import Gtk, GObject
+from sigrok.core import Context, Driver, Device, Session, Packet
+from sigrok.core import lowlevel as ll
+
+def init_and_run(queue):
+    def datafeed_in(device, packet):
+        if packet.type == Packet.ANALOG:
+            data = packet.payload.data
+            unit, unit_str = packet.payload.unit, ""
+            if unit == ll.SR_UNIT_VOLT:
+                unit_str = " V"
+            elif unit == ll.SR_UNIT_OHM:
+                unit_str = " Ohm"
+            elif unit == ll.SR_UNIT_AMPERE:
+                unit_str = " A"
+            mqflags, mqflags_str = packet.payload.unit, ""
+            if mqflags & ll.SR_MQFLAG_AC:
+                mqflags_str = " AC"
+            elif mqflags & ll.SR_MQFLAG_DC:
+                mqflags_str = " DC"
+            for i in range(packet.payload.num_samples):
+                queue.put("%f%s%s" % (data[i], unit_str, mqflags_str))
+
+    # ll.sr_log_loglevel_set(5)
+    context = Context()
+    driver = context.drivers['voltcraft-vc820']
+    device = driver.scan()[0]
+    device.limit_samples = 1000
+    session = Session(context)
+    session.add_device(device)
+    session.add_callback(datafeed_in)
+    session.start()
+    session.run()
+    session.stop()
 
 class SigrokMeter:
     def __init__(self):
         self.builder = Gtk.Builder()
         self.builder.add_from_file("sigrok-meter.glade")
         self.builder.connect_signals(self)
+        self.value_label = self.builder.get_object("value_label")
         self.win = self.builder.get_object("mainwindow")
         self.win.show_all()
+        self.queue = Queue()
+        GObject.timeout_add(100, self.update_label_if_needed)
+
+    def update_label_if_needed(self):
+        try:
+            t = self.queue.get_nowait()
+            self.value_label.set_text(t)
+        except:
+            pass
+        GObject.timeout_add(100, self.update_label_if_needed)
 
     def on_quit(self, *args):
         Gtk.main_quit(*args)
 
     def on_about(self, action):
         about = self.builder.get_object("aboutdialog")
-        sr_pkg = libsigrok.sr_package_version_string_get()
-        sr_lib = libsigrok.sr_lib_version_string_get()
+        sr_pkg = ll.sr_package_version_string_get()
+        sr_lib = ll.sr_lib_version_string_get()
         s = "Using libsigrok %s (lib version %s)." % (sr_pkg, sr_lib)
         about.set_comments(s)
         about.run()
         about.hide()
 
 if __name__ == '__main__':
-        SigrokMeter()
+        s = SigrokMeter()
+        process = Process(target=init_and_run, args=(s.queue,))
+        process.start()
         Gtk.main()
+        process.terminate()
 
