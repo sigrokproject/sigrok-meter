@@ -21,7 +21,7 @@
 
 from multiprocessing import Process, Queue
 from gi.repository import Gtk, GObject
-from sigrok.core import Context, Driver, Device, Session, Packet
+from sigrok.core import Context, Driver, Device, Session, Packet, Log
 from sigrok.core import lowlevel as ll
 
 def init_and_run(queue):
@@ -43,7 +43,8 @@ def init_and_run(queue):
             for i in range(packet.payload.num_samples):
                 queue.put("%f%s%s" % (data[i], unit_str, mqflags_str))
 
-    # ll.sr_log_loglevel_set(5)
+    # log = Log()
+    # log.level = Log.SPEW
     context = Context()
     driver = context.drivers['voltcraft-vc820']
     device = driver.scan()[0]
