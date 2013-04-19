@@ -35,22 +35,27 @@ def init_and_run(queue):
                 unit_str = " Ohm"
             elif unit == ll.SR_UNIT_AMPERE:
                 unit_str = " A"
-            mqflags, mqflags_str = packet.payload.unit, ""
+            mqflags, mqflags_str = packet.payload.mqflags, ""
             if mqflags & ll.SR_MQFLAG_AC:
                 mqflags_str = " AC"
             elif mqflags & ll.SR_MQFLAG_DC:
                 mqflags_str = " DC"
             for i in range(packet.payload.num_samples):
-                queue.put("%f%s%s" % (data[i], unit_str, mqflags_str))
+                dev = "%s" % device.vendor
+                val = "%f%s%s" % (data[i], unit_str, mqflags_str)
+                queue.put((dev, val))
 
     # log = Log()
     # log.level = Log.SPEW
     context = Context()
-    driver = context.drivers['voltcraft-vc820']
-    device = driver.scan()[0]
-    device.limit_samples = 1000
+    drivers_to_use = ['voltcraft-vc820', 'victor-dmm']
+    drivers = [context.drivers[d] for d in drivers_to_use]
+    devices = [d.scan()[0] for d in drivers]
+    for dev in devices:
+        dev.limit_samples = 1000
     session = Session(context)
-    session.add_device(device)
+    for dev in devices:
+        session.add_device(dev)
     session.add_callback(datafeed_in)
     session.start()
     session.run()
@@ -62,6 +67,7 @@ class SigrokMeter:
         self.builder.add_from_file("sigrok-meter.glade")
         self.builder.connect_signals(self)
         self.value_label = self.builder.get_object("value_label")
+        self.value_label2 = self.builder.get_object("value_label2")
         self.win = self.builder.get_object("mainwindow")
         self.win.show_all()
         self.queue = Queue()
@@ -70,7 +76,8 @@ class SigrokMeter:
     def update_label_if_needed(self):
         try:
             t = self.queue.get_nowait()
-            self.value_label.set_text(t)
+            l = self.value_label if t[0] != "Victor" else self.value_label2
+            l.set_text("%s: %s" % (t[0], t[1]))
         except:
             pass
         GObject.timeout_add(100, self.update_label_if_needed)
