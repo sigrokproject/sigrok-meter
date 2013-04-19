@@ -22,6 +22,7 @@
 from multiprocessing import Process, Queue
 from gi.repository import Gtk, GObject
 from sigrok.core import *
+from sigrok.core import lowlevel as ll
 
 def init_and_run(queue):
     def datafeed_in(device, packet):
@@ -32,7 +33,7 @@ def init_and_run(queue):
                 unit_str = " V"
             elif unit is Unit.OHM:
                 unit_str = " Ohm"
-            elif unit is unit.AMPERE:
+            elif unit is Unit.AMPERE:
                 unit_str = " A"
             mqflags, mqflags_str = packet.payload.mqflags, ""
             if QuantityFlag.AC in mqflags:
