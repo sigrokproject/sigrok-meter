@@ -21,24 +21,23 @@
 
 from multiprocessing import Process, Queue
 from gi.repository import Gtk, GObject
-from sigrok.core import Context, Driver, Device, Session, Packet, Log
-from sigrok.core import lowlevel as ll
+from sigrok.core import *
 
 def init_and_run(queue):
     def datafeed_in(device, packet):
-        if packet.type == Packet.ANALOG:
+        if packet.type is PacketType.ANALOG:
             data = packet.payload.data
             unit, unit_str = packet.payload.unit, ""
-            if unit == ll.SR_UNIT_VOLT:
+            if unit is Unit.VOLT:
                 unit_str = " V"
-            elif unit == ll.SR_UNIT_OHM:
+            elif unit is Unit.OHM:
                 unit_str = " Ohm"
-            elif unit == ll.SR_UNIT_AMPERE:
+            elif unit is unit.AMPERE:
                 unit_str = " A"
             mqflags, mqflags_str = packet.payload.mqflags, ""
-            if mqflags & ll.SR_MQFLAG_AC:
+            if QuantityFlag.AC in mqflags:
                 mqflags_str = " AC"
-            elif mqflags & ll.SR_MQFLAG_DC:
+            elif QuantityFlag.DC in mqflags:
                 mqflags_str = " DC"
             for i in range(packet.payload.num_samples):
                 dev = "%s" % device.vendor
@@ -46,7 +45,7 @@ def init_and_run(queue):
                 queue.put((dev, val))
 
     # log = Log()
-    # log.level = Log.SPEW
+    # log.level = LogLevel.SPEW
     context = Context()
     drivers_to_use = ['voltcraft-vc820', 'victor-dmm']
     drivers = [context.drivers[d] for d in drivers_to_use]
