@@ -94,9 +94,9 @@ class SigrokMeter:
         about.hide()
 
 if __name__ == '__main__':
-        s = SigrokMeter()
-        process = Process(target=init_and_run, args=(s.queue,))
-        process.start()
-        Gtk.main()
-        process.terminate()
+    s = SigrokMeter()
+    process = Process(target=init_and_run, args=(s.queue,))
+    process.start()
+    Gtk.main()
+    process.terminate()
 
