@@ -41,20 +41,22 @@ def init_and_run(queue):
             elif QuantityFlag.DC in mqflags:
                 mqflags_str = " DC"
             for i in range(packet.payload.num_samples):
-                dev = "%s" % device.vendor
+                dev = "%s %s" % (device.vendor, device.model)
                 val = "%f%s%s" % (data[i], unit_str, mqflags_str)
                 queue.put((dev, val))
 
     # log = Log()
     # log.level = LogLevel.SPEW
     context = Context()
-    drivers_to_use = ['voltcraft-vc820', 'victor-dmm']
+    drivers_to_use = ['tecpel-dmm-8061-ser']
     drivers = [context.drivers[d] for d in drivers_to_use]
-    devices = [d.scan()[0] for d in drivers]
-    for dev in devices:
-        dev.limit_samples = 1000
+    devices = [d.scan(conn="/dev/ttyUSB0")[0] for d in drivers]
+    # devices = [d.scan()[0] for d in drivers]
+    # for dev in devices:
+    #     dev.limit_samples = 1000
     session = Session(context)
     for dev in devices:
+        session.open_device(dev)
         session.add_device(dev)
     session.add_callback(datafeed_in)
     session.start()
