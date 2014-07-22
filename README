@@ -65,13 +65,10 @@ due to the fact that it links against GPLv3+ libraries).
 Please see the individual source files for the full list of copyright holders.
 
 
-Mailing lists
--------------
-
-There are two mailing lists for sigrok/sigrok-meter:
+Mailing list
+------------
 
  https://lists.sourceforge.net/lists/listinfo/sigrok-devel
- https://lists.sourceforge.net/lists/listinfo/sigrok-commits
 
 
 IRC
