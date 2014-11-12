@@ -31,25 +31,54 @@ import textwrap
 default_drivers = [('demo', {'analog_channels': 1})]
 default_loglevel = sr.LogLevel.WARN
 
+def format_unit(u):
+    units = {
+        sr.Unit.VOLT:                   'V',
+        sr.Unit.AMPERE:                 'A',
+        sr.Unit.OHM:                   u'\u03A9',
+        sr.Unit.FARAD:                  'F',
+        sr.Unit.KELVIN:                 'K',
+        sr.Unit.CELSIUS:               u'\u00B0C',
+        sr.Unit.FAHRENHEIT:            u'\u00B0F',
+        sr.Unit.HERTZ:                  'Hz',
+        sr.Unit.PERCENTAGE:             '%',
+      # sr.Unit.BOOLEAN
+        sr.Unit.SECOND:                 's',
+        sr.Unit.SIEMENS:                'S',
+        sr.Unit.DECIBEL_MW:             'dBu',
+        sr.Unit.DECIBEL_VOLT:           'dBV',
+      # sr.Unit.UNITLESS
+        sr.Unit.DECIBEL_SPL:            'dB',
+      # sr.Unit.CONCENTRATION
+        sr.Unit.REVOLUTIONS_PER_MINUTE: 'rpm',
+        sr.Unit.VOLT_AMPERE:            'VA',
+        sr.Unit.WATT:                   'W',
+        sr.Unit.WATT_HOUR:              'Wh',
+        sr.Unit.METER_SECOND:           'm/s',
+        sr.Unit.HECTOPASCAL:            'hPa',
+        sr.Unit.HUMIDITY_293K:          '%rF',
+        sr.Unit.DEGREE:                u'\u00B0',
+        sr.Unit.HENRY:                  'H'
+    }
+
+    return units.get(u, '')
+
 def init_and_run(queue, drivers, loglevel):
     def datafeed_in(device, packet):
         if packet.type == sr.PacketType.ANALOG:
             data = packet.payload.data
-            unit, unit_str = packet.payload.unit, ""
-            if unit == sr.Unit.VOLT:
-                unit_str = " V"
-            elif unit == sr.Unit.OHM:
-                unit_str = " Ohm"
-            elif unit == sr.Unit.AMPERE:
-                unit_str = " A"
+            unit_str = format_unit(packet.payload.unit)
             mqflags, mqflags_str = packet.payload.mq_flags, ""
+
             if sr.QuantityFlag.AC in mqflags:
-                mqflags_str = " AC"
+                mqflags_str = "AC"
             elif sr.QuantityFlag.DC in mqflags:
-                mqflags_str = " DC"
+                mqflags_str = "DC"
+
             for i in range(packet.payload.num_samples):
                 dev = "%s %s" % (device.vendor, device.model)
-                val = "%f%s%s" % (data[0][i], unit_str, mqflags_str)
+                mag_str = "%f" % data[0][i]
+                val = ' '.join([mag_str, unit_str, mqflags_str])
                 queue.put((dev, val))
 
     context = sr.Context_create()
