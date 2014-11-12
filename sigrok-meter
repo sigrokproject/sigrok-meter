@@ -23,12 +23,15 @@
 import argparse
 from multiprocessing import Process, Queue
 from gi.repository import Gtk, GObject
+import re
 import sigrok.core as sr
 import sys
+import textwrap
 
+default_drivers = [('demo', {'analog_channels': 1})]
 default_loglevel = sr.LogLevel.WARN
 
-def init_and_run(queue, loglevel):
+def init_and_run(queue, drivers, loglevel):
     def datafeed_in(device, packet):
         if packet.type == sr.PacketType.ANALOG:
             data = packet.payload.data
@@ -51,12 +54,19 @@ def init_and_run(queue, loglevel):
 
     context = sr.Context_create()
     context.log_level = loglevel
-    drivers_to_use = ['tecpel-dmm-8061-ser']
-    drivers = [context.drivers[d] for d in drivers_to_use]
-    devices = [d.scan(conn="/dev/ttyUSB0")[0] for d in drivers]
-    # devices = [d.scan()[0] for d in drivers]
-    # for dev in devices:
-    #     dev.limit_samples = 1000
+
+    devices = []
+    for name, options in drivers:
+        try:
+            dr = context.drivers[name]
+            devices.append(dr.scan(**options)[0])
+        except:
+            print('error getting device for driver "{}", skipping'.format(name))
+
+    if not devices:
+        print('no devices found')
+        return
+
     session = context.create_session()
     for dev in devices:
         session.add_device(dev)
@@ -100,23 +110,59 @@ class SigrokMeter:
         about.run()
         about.hide()
 
-if __name__ == '__main__':
+def parse_cli():
     parser = argparse.ArgumentParser(
-        description='Simple sigrok GUI for multimeters and dataloggers.')
+        description='Simple sigrok GUI for multimeters and dataloggers.',
+        epilog=textwrap.dedent('''\
+            The DRIVER string is the same as for sigrok-cli(1).
+
+            examples:
+
+              %(prog)s --driver tecpel-dmm-8061-ser:conn=/dev/ttyUSB0
+
+              %(prog)s --driver uni-t-ut61e:conn=1a86.e008
+        '''),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+
+    parser.add_argument('-d', '--driver',
+        action='append',
+        help='The driver to use')
     parser.add_argument('-l', '--loglevel',
         type=int,
         help='Set loglevel (5 is most verbose)')
     args = parser.parse_args()
 
-    loglevel = default_loglevel
+    result = {
+        'drivers': default_drivers,
+        'loglevel': default_loglevel
+    }
+
+    if args.driver:
+        result['drivers'] = []
+        for d in args.driver:
+            m = re.match('(?P<name>[^:]+)(?P<opts>(:[^:=]+=[^:=]+)*)', d)
+            if not m:
+                sys.exit('error parsing option "{}"'.format(d))
+
+            opts = m.group('opts').split(':')[1:]
+            opts = [tuple(kv.split('=')) for kv in opts]
+            opts = dict(opts)
+
+            result['drivers'].append((m.group('name'), opts))
+
     if args.loglevel != None:
         try:
-            loglevel = sr.LogLevel.get(args.loglevel)
+            result['loglevel'] = sr.LogLevel.get(args.loglevel)
         except:
             sys.exit('error: invalid log level')
 
+    return result
+
+if __name__ == '__main__':
+    args = parse_cli()
     s = SigrokMeter()
-    process = Process(target=init_and_run, args=(s.queue, loglevel))
+    process = Process(target=init_and_run,
+            args=(s.queue, args['drivers'], args['loglevel']))
     process.start()
     Gtk.main()
     process.terminate()
