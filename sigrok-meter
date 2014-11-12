@@ -20,11 +20,15 @@
 ## Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 ##
 
+import argparse
 from multiprocessing import Process, Queue
 from gi.repository import Gtk, GObject
 import sigrok.core as sr
+import sys
 
-def init_and_run(queue):
+default_loglevel = sr.LogLevel.WARN
+
+def init_and_run(queue, loglevel):
     def datafeed_in(device, packet):
         if packet.type == sr.PacketType.ANALOG:
             data = packet.payload.data
@@ -46,7 +50,7 @@ def init_and_run(queue):
                 queue.put((dev, val))
 
     context = sr.Context_create()
-    context.log_level = sr.LogLevel.SPEW
+    context.log_level = loglevel
     drivers_to_use = ['tecpel-dmm-8061-ser']
     drivers = [context.drivers[d] for d in drivers_to_use]
     devices = [d.scan(conn="/dev/ttyUSB0")[0] for d in drivers]
@@ -97,8 +101,22 @@ class SigrokMeter:
         about.hide()
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Simple sigrok GUI for multimeters and dataloggers.')
+    parser.add_argument('-l', '--loglevel',
+        type=int,
+        help='Set loglevel (5 is most verbose)')
+    args = parser.parse_args()
+
+    loglevel = default_loglevel
+    if args.loglevel != None:
+        try:
+            loglevel = sr.LogLevel.get(args.loglevel)
+        except:
+            sys.exit('error: invalid log level')
+
     s = SigrokMeter()
-    process = Process(target=init_and_run, args=(s.queue,))
+    process = Process(target=init_and_run, args=(s.queue, loglevel))
     process.start()
     Gtk.main()
     process.terminate()
