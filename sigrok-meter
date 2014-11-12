@@ -23,43 +23,41 @@
 from multiprocessing import Process, Queue
 from gi.repository import Gtk, GObject
 from sigrok.core import *
-from sigrok.core import lowlevel as ll
 
 def init_and_run(queue):
     def datafeed_in(device, packet):
-        if packet.type is PacketType.ANALOG:
+        if packet.type == PacketType.ANALOG:
             data = packet.payload.data
             unit, unit_str = packet.payload.unit, ""
-            if unit is Unit.VOLT:
+            if unit == Unit.VOLT:
                 unit_str = " V"
-            elif unit is Unit.OHM:
+            elif unit == Unit.OHM:
                 unit_str = " Ohm"
-            elif unit is Unit.AMPERE:
+            elif unit == Unit.AMPERE:
                 unit_str = " A"
-            mqflags, mqflags_str = packet.payload.mqflags, ""
+            mqflags, mqflags_str = packet.payload.mq_flags, ""
             if QuantityFlag.AC in mqflags:
                 mqflags_str = " AC"
             elif QuantityFlag.DC in mqflags:
                 mqflags_str = " DC"
             for i in range(packet.payload.num_samples):
                 dev = "%s %s" % (device.vendor, device.model)
-                val = "%f%s%s" % (data[i], unit_str, mqflags_str)
+                val = "%f%s%s" % (data[0][i], unit_str, mqflags_str)
                 queue.put((dev, val))
 
-    # log = Log()
-    # log.level = LogLevel.SPEW
-    context = Context()
+    context = Context_create()
+    context.log_level = LogLevel.SPEW
     drivers_to_use = ['tecpel-dmm-8061-ser']
     drivers = [context.drivers[d] for d in drivers_to_use]
     devices = [d.scan(conn="/dev/ttyUSB0")[0] for d in drivers]
     # devices = [d.scan()[0] for d in drivers]
     # for dev in devices:
     #     dev.limit_samples = 1000
-    session = Session(context)
+    session = context.create_session()
     for dev in devices:
-        session.open_device(dev)
         session.add_device(dev)
-    session.add_callback(datafeed_in)
+        dev.open()
+    session.add_datafeed_callback(datafeed_in)
     session.start()
     session.run()
     session.stop()
@@ -90,8 +88,9 @@ class SigrokMeter:
 
     def on_about(self, action):
         about = self.builder.get_object("aboutdialog")
-        sr_pkg = ll.sr_package_version_string_get()
-        sr_lib = ll.sr_lib_version_string_get()
+        context = Context_create()
+        sr_pkg = context.package_version
+        sr_lib = context.lib_version
         s = "Using libsigrok %s (lib version %s)." % (sr_pkg, sr_lib)
         about.set_comments(s)
         about.run()
