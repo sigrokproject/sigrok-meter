@@ -6,10 +6,9 @@ The sigrok project aims at creating a portable, cross-platform,
 Free/Libre/Open-Source signal analysis software suite that supports various
 device types (such as logic analyzers, oscilloscopes, multimeters, and more).
 
-sigrok-meter is a special-purpose GUI for libsigrok (written in Python3, using
-PyGObject and GTK+3) which supports certain classes of test & measurement
-devices that usually provide slowly-updating measurement values, such as
-multimeters or dataloggers.
+sigrok-meter is a special-purpose GUI for libsigrok (written in Python + Qt)
+which supports certain classes of test & measurement devices that usually
+provide slowly-updating measurement values, such as multimeters or dataloggers.
 
 It does specifically NOT support logic analyzers, oscilloscopes, and
 mixed-signal oscilloscopes (MSOs).
@@ -27,10 +26,9 @@ Requirements
 ------------
 
  - git
- - Python >= 3.0
- - PyGObject
- - GTK+ >= 3.0
- - libsigrok >= 0.2.0 (including the Python bindings)
+ - Python
+ - PyQt4
+ - libsigrok >= 0.3.0 (including the Python bindings)
 
 
 Building and installing
