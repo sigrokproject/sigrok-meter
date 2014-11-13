@@ -34,38 +34,6 @@ import textwrap
 default_drivers = [('demo', {'analog_channels': 1})]
 default_loglevel = sr.LogLevel.WARN
 
-def format_unit(u):
-    units = {
-        sr.Unit.VOLT:                   'V',
-        sr.Unit.AMPERE:                 'A',
-        sr.Unit.OHM:                   u'\u03A9',
-        sr.Unit.FARAD:                  'F',
-        sr.Unit.KELVIN:                 'K',
-        sr.Unit.CELSIUS:               u'\u00B0C',
-        sr.Unit.FAHRENHEIT:            u'\u00B0F',
-        sr.Unit.HERTZ:                  'Hz',
-        sr.Unit.PERCENTAGE:             '%',
-      # sr.Unit.BOOLEAN
-        sr.Unit.SECOND:                 's',
-        sr.Unit.SIEMENS:                'S',
-        sr.Unit.DECIBEL_MW:             'dBu',
-        sr.Unit.DECIBEL_VOLT:           'dBV',
-      # sr.Unit.UNITLESS
-        sr.Unit.DECIBEL_SPL:            'dB',
-      # sr.Unit.CONCENTRATION
-        sr.Unit.REVOLUTIONS_PER_MINUTE: 'rpm',
-        sr.Unit.VOLT_AMPERE:            'VA',
-        sr.Unit.WATT:                   'W',
-        sr.Unit.WATT_HOUR:              'Wh',
-        sr.Unit.METER_SECOND:           'm/s',
-        sr.Unit.HECTOPASCAL:            'hPa',
-        sr.Unit.HUMIDITY_293K:          '%rF',
-        sr.Unit.DEGREE:                u'\u00B0',
-        sr.Unit.HENRY:                  'H'
-    }
-
-    return units.get(u, '')
-
 class SamplingThread(QtCore.QObject):
     '''A class that handles the reception of sigrok packets in the background.'''
 
@@ -73,7 +41,7 @@ class SamplingThread(QtCore.QObject):
         '''Helper class that does the actual work in another thread.'''
 
         '''Signal emitted when new data arrived.'''
-        measured = QtCore.pyqtSignal(object, object)
+        measured = QtCore.pyqtSignal(object)
 
         def __init__(self, drivers, loglevel):
             super(self.__class__, self).__init__()
@@ -109,21 +77,13 @@ class SamplingThread(QtCore.QObject):
 
         def callback(self, device, packet):
             if packet.type == sr.PacketType.ANALOG:
-                data = packet.payload.data
-                unit_str = format_unit(packet.payload.unit)
-                mqflags, mqflags_str = packet.payload.mq_flags, ""
+                dev = '{} {}'.format(device.vendor, device.model)
 
-                if sr.QuantityFlag.AC in mqflags:
-                    mqflags_str = "AC"
-                elif sr.QuantityFlag.DC in mqflags:
-                    mqflags_str = "DC"
+                # only send the most recent value
+                mag = packet.payload.data[0][-1]
 
-                for i in range(packet.payload.num_samples):
-                    dev = "%s %s" % (device.vendor, device.model)
-                    mag_str = "%f" % data[0][i]
-                    val = ' '.join([mag_str, unit_str, mqflags_str])
-
-                    self.measured.emit(dev, val)
+                self.measured.emit((dev, mag, packet.payload.unit,
+                        packet.payload.mq_flags))
 
             # wait a short time so that in any case we don't flood the GUI
             # with new data (for example if the demo device is used)
@@ -171,6 +131,8 @@ class SigrokMeter(QtGui.QMainWindow):
     def __init__(self, thread):
         super(SigrokMeter, self).__init__()
         self.setup_ui()
+
+        self.inf = float('inf')
 
         self.thread = thread
         self.thread.measured.connect(self.update, QtCore.Qt.QueuedConnection)
@@ -238,8 +200,62 @@ class SigrokMeter(QtGui.QMainWindow):
 
         QtGui.QMessageBox.about(self, 'About sigrok-meter', text)
 
-    def update(self, device, value):
+    def format_unit(self, u):
+        units = {
+            sr.Unit.VOLT:                   'V',
+            sr.Unit.AMPERE:                 'A',
+            sr.Unit.OHM:                   u'\u03A9',
+            sr.Unit.FARAD:                  'F',
+            sr.Unit.KELVIN:                 'K',
+            sr.Unit.CELSIUS:               u'\u00B0C',
+            sr.Unit.FAHRENHEIT:            u'\u00B0F',
+            sr.Unit.HERTZ:                  'Hz',
+            sr.Unit.PERCENTAGE:             '%',
+          # sr.Unit.BOOLEAN
+            sr.Unit.SECOND:                 's',
+            sr.Unit.SIEMENS:                'S',
+            sr.Unit.DECIBEL_MW:             'dBu',
+            sr.Unit.DECIBEL_VOLT:           'dBV',
+          # sr.Unit.UNITLESS
+            sr.Unit.DECIBEL_SPL:            'dB',
+          # sr.Unit.CONCENTRATION
+            sr.Unit.REVOLUTIONS_PER_MINUTE: 'rpm',
+            sr.Unit.VOLT_AMPERE:            'VA',
+            sr.Unit.WATT:                   'W',
+            sr.Unit.WATT_HOUR:              'Wh',
+            sr.Unit.METER_SECOND:           'm/s',
+            sr.Unit.HECTOPASCAL:            'hPa',
+            sr.Unit.HUMIDITY_293K:          '%rF',
+            sr.Unit.DEGREE:                u'\u00B0',
+            sr.Unit.HENRY:                  'H'
+        }
+
+        return units.get(u, '')
+
+    def format_mqflags(self, mqflags):
+        if sr.QuantityFlag.AC in mqflags:
+            s = 'AC'
+        elif sr.QuantityFlag.DC in mqflags:
+            s = 'DC'
+        else:
+            s = ''
+
+        return s
+
+    def format_mag(self, mag):
+        if mag == self.inf:
+            return u'\u221E'
+        return '{:f}'.format(mag)
+
+    def update(self, data):
         '''Updates the labels with new measurement values.'''
+
+        device, mag, unit, mqflags = data
+
+        unit_str = self.format_unit(unit)
+        mqflags_str = self.format_mqflags(mqflags)
+        mag_str = self.format_mag(mag)
+        value = ' '.join([mag_str, unit_str, mqflags_str])
 
         n = datetime.datetime.now().time()
         now = '{:02}:{:02}:{:02}.{:03}'.format(
