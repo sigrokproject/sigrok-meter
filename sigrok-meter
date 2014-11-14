@@ -115,8 +115,14 @@ class SamplingThread(QtCore.QObject):
         '''Signal emitted when new data arrived.'''
         measured = qt_signal(object)
 
+        '''Signal emmited in case of an error.'''
+        error = qt_signal(str)
+
         def __init__(self, drivers, loglevel):
             super(self.__class__, self).__init__()
+
+            self.sampling = False
+            self.drivers = drivers
 
             self.context = sr.Context_create()
             self.context.log_level = loglevel
@@ -124,28 +130,36 @@ class SamplingThread(QtCore.QObject):
             self.sr_pkg_version = self.context.package_version
             self.sr_lib_version = self.context.lib_version
 
-            self.devices = []
-            for name, options in drivers:
+        def start_sampling(self):
+            devices = []
+            for name, options in self.drivers:
                 try:
                     dr = self.context.drivers[name]
-                    self.devices.append(dr.scan(**options)[0])
+                    devices.append(dr.scan(**options)[0])
                 except:
-                    print('error getting device for driver "{}", skipping'.format(name))
+                    self.error.emit(
+                        'Unable to get device for driver "{}".'.format(name))
+                    return
 
-            if not self.devices:
-                print('no devices found')
-
-        def start_sampling(self):
             self.session = self.context.create_session()
-            for dev in self.devices:
+            for dev in devices:
                 self.session.add_device(dev)
                 dev.open()
             self.session.add_datafeed_callback(self.callback)
             self.session.start()
+            self.sampling = True
             self.session.run()
 
+            # If sampling is 'True' here, it means that 'stop_sampling()' was
+            # not called, therefore 'session.run()' ended too early, indicating
+            # an error.
+            if self.sampling:
+                self.error.emit('An error occured during the acquisition.')
+
         def stop_sampling(self):
-            self.session.stop()
+            if self.sampling:
+                self.sampling = False
+                self.session.stop()
 
         def callback(self, device, packet):
             if packet.type == sr.PacketType.ANALOG:
@@ -173,7 +187,9 @@ class SamplingThread(QtCore.QObject):
 
         self._start_signal.connect(self.worker.start_sampling)
 
+        # expose the signals of the worker
         self.measured = self.worker.measured
+        self.error = self.worker.error
 
         self.thread.start()
 
@@ -208,6 +224,7 @@ class SigrokMeter(QtGui.QMainWindow):
 
         self.thread = thread
         self.thread.measured.connect(self.update, QtCore.Qt.QueuedConnection)
+        self.thread.error.connect(self.error)
         self.thread.start()
 
     def setup_ui(self):
@@ -336,6 +353,11 @@ class SigrokMeter(QtGui.QMainWindow):
         self.lblValue.setText(value)
         self.lblDevName.setText(device)
         self.lblTime.setText(now)
+
+    def error(self, msg):
+        '''Error handler for the sampling thread.'''
+        QtGui.QMessageBox.critical(self, 'Error', msg)
+        self.close()
 
 if __name__ == '__main__':
     thread = SamplingThread(args['drivers'], args['loglevel'])
