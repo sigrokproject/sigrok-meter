@@ -92,19 +92,29 @@ if __name__ == '__main__':
 
     args = parse_cli()
 
-    global qt_signal
-
     if args['pyside']:
         from PySide import QtCore, QtGui
-        qt_signal = QtCore.Signal
     else:
         try:
+            # Use version 2 API in all cases, because that's what PySide uses.
+            import sip
+            sip.setapi('QVariant', 2)
+            sip.setapi('QDate', 2)
+            sip.setapi('QDateTime', 2)
+            sip.setapi('QString', 2)
+            sip.setapi('QTextStream', 2)
+            sip.setapi('QTime', 2)
+            sip.setapi('QUrl', 2)
+            sip.setapi('QVariant', 2)
+
             from PyQt4 import QtCore, QtGui
-            qt_signal = QtCore.pyqtSignal
+
+            # Add PySide compatible names.
+            QtCore.Signal = QtCore.pyqtSignal
+            QtCore.Slot = QtCore.pyqtSlot
         except:
             sys.stderr.write('import of PyQt4 failed, using PySide\n')
             from PySide import QtCore, QtGui
-            qt_signal = QtCore.Signal
 
 class SamplingThread(QtCore.QObject):
     '''A class that handles the reception of sigrok packets in the background.'''
@@ -113,10 +123,10 @@ class SamplingThread(QtCore.QObject):
         '''Helper class that does the actual work in another thread.'''
 
         '''Signal emitted when new data arrived.'''
-        measured = qt_signal(object)
+        measured = QtCore.Signal(object, object)
 
         '''Signal emmited in case of an error.'''
-        error = qt_signal(str)
+        error = QtCore.Signal(str)
 
         def __init__(self, drivers, loglevel):
             super(self.__class__, self).__init__()
@@ -176,7 +186,7 @@ class SamplingThread(QtCore.QObject):
             self.thread().msleep(100)
 
     # signal used to start the worker across threads
-    _start_signal = qt_signal()
+    _start_signal = QtCore.Signal()
 
     def __init__(self, drivers, loglevel):
         super(self.__class__, self).__init__()
