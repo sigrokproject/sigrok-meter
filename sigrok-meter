@@ -29,7 +29,7 @@ import sigrok.core as sr
 import sys
 import textwrap
 
-default_drivers = [('demo', {'analog_channels': 1})]
+default_drivers = [('demo', {'analog_channels': 4})]
 default_loglevel = sr.LogLevel.WARN
 
 def parse_cli():
@@ -174,13 +174,7 @@ class SamplingThread(QtCore.QObject):
 
         def callback(self, device, packet):
             if packet.type == sr.PacketType.ANALOG:
-                dev = '{} {}'.format(device.vendor, device.model)
-
-                # only send the most recent value
-                mag = packet.payload.data[0][-1]
-
-                self.measured.emit((dev, mag, packet.payload.unit,
-                        packet.payload.mq_flags))
+                self.measured.emit(device, packet.payload)
 
             # wait a short time so that in any case we don't flood the GUI
             # with new data (for example if the demo device is used)
@@ -224,82 +218,20 @@ class SamplingThread(QtCore.QObject):
         '''Returns the version number fo the libsigrok library.'''
         return self.worker.sr_lib_version
 
-class SigrokMeter(QtGui.QMainWindow):
-    '''The main window of the application.'''
+class MeasurementDataModel(QtGui.QStandardItemModel):
+    '''Model to hold the measured values.'''
 
-    def __init__(self, thread):
-        super(SigrokMeter, self).__init__()
-        self.setup_ui()
+    '''Role used to identify and find the item.'''
+    _idRole = QtCore.Qt.UserRole + 1
 
+    '''Role used to store the device vendor and model.'''
+    descRole = QtCore.Qt.UserRole + 2
+
+    def __init__(self, parent):
+        super(self.__class__, self).__init__(parent)
+
+        # used in 'format_mag()' to check against
         self.inf = float('inf')
-
-        self.thread = thread
-        self.thread.measured.connect(self.update, QtCore.Qt.QueuedConnection)
-        self.thread.error.connect(self.error)
-        self.thread.start()
-
-    def setup_ui(self):
-        self.setWindowTitle('sigrok-meter')
-        self.setMinimumHeight(130)
-        self.setMinimumWidth(260)
-
-        p = os.path.abspath(os.path.dirname(__file__))
-        p = os.path.join(p, 'sigrok-logo-notext.png')
-        self.setWindowIcon(QtGui.QIcon(p))
-
-        actionQuit = QtGui.QAction(self)
-        actionQuit.setText('&Quit')
-        actionQuit.setIcon(QtGui.QIcon.fromTheme('application-exit'))
-        actionQuit.setShortcut('Ctrl+Q')
-        actionQuit.triggered.connect(self.close)
-
-        actionAbout = QtGui.QAction(self)
-        actionAbout.setText('&About')
-        actionAbout.setIcon(QtGui.QIcon.fromTheme('help-about'))
-        actionAbout.triggered.connect(self.show_about)
-
-        menubar = self.menuBar()
-        menuFile = menubar.addMenu('&File')
-        menuFile.addAction(actionQuit)
-        menuHelp = menubar.addMenu('&Help')
-        menuHelp.addAction(actionAbout)
-
-        self.lblValue = QtGui.QLabel('waiting for data...')
-        self.lblValue.setAlignment(QtCore.Qt.AlignCenter)
-        font = self.lblValue.font()
-        font.setPointSize(font.pointSize() * 1.7)
-        font.setBold(True)
-        self.lblValue.setFont(font)
-        self.setCentralWidget(self.lblValue)
-        self.centralWidget().setContentsMargins(0, 0, 0, 0)
-
-        self.lblDevName = QtGui.QLabel()
-        self.lblDevName.setToolTip('Name of used measurement device.')
-        self.statusBar().insertWidget(0, self.lblDevName, 10)
-        self.lblTime = QtGui.QLabel()
-        self.lblTime.setToolTip('Time of the last measurement.')
-        self.statusBar().insertWidget(1, self.lblTime)
-
-        self.statusBar().setSizeGripEnabled(False)
-
-    @QtCore.Slot()
-    def show_about(self):
-        text = textwrap.dedent('''\
-            <div align="center">
-                <b>sigrok-meter</b><br/>
-                0.1.0<br/>
-                Using libsigrok {} (lib version {}).<br/>
-                <a href='http://www.sigrok.org'>
-                         http://www.sigrok.org</a><br/>
-                <br/>
-                This program comes with ABSOLUTELY NO WARRANTY;<br/>
-                for details visit
-                <a href='http://www.gnu.org/licenses/gpl.html'>
-                         http://www.gnu.org/licenses/gpl.html</a>
-            </div>
-        '''.format(self.thread.sr_pkg_version(), self.thread.sr_lib_version()))
-
-        QtGui.QMessageBox.about(self, 'About sigrok-meter', text)
 
     def format_unit(self, u):
         units = {
@@ -335,43 +267,226 @@ class SigrokMeter(QtGui.QMainWindow):
 
     def format_mqflags(self, mqflags):
         if sr.QuantityFlag.AC in mqflags:
-            s = 'AC'
+            return 'AC'
         elif sr.QuantityFlag.DC in mqflags:
-            s = 'DC'
+            return 'DC'
         else:
-            s = ''
-
-        return s
+            return ''
 
     def format_mag(self, mag):
         if mag == self.inf:
             return u'\u221E'
         return '{:f}'.format(mag)
 
-    @QtCore.Slot(object)
-    def update(self, data):
-        '''Updates the labels with new measurement values.'''
+    def getItem(self, device, channel):
+        '''Returns the item for the device + channel combination from the model,
+        or creates a new item if no existing one matches.'''
 
-        device, mag, unit, mqflags = data
+        # unique identifier for the device + channel
+        # TODO: isn't there something better?
+        uid = (
+            device.vendor,
+            device.model,
+            device.serial_number(),
+            device.connection_id(),
+            channel.index
+        )
 
-        unit_str = self.format_unit(unit)
-        mqflags_str = self.format_mqflags(mqflags)
+        # find the correct item in the model
+        for row in range(self.rowCount()):
+            item = self.item(row)
+            rid = item.data(MeasurementDataModel._idRole)
+            rid = tuple(rid) # PySide returns a list
+            if uid == rid:
+                return item
+
+        # nothing found, create a new item
+        desc = '{} {}, channel "{}"'.format(
+                device.vendor, device.model, channel.name)
+
+        item = QtGui.QStandardItem()
+        item.setData(uid, MeasurementDataModel._idRole)
+        item.setData(desc, MeasurementDataModel.descRole)
+        self.appendRow(item)
+        return item
+
+    @QtCore.Slot(object, object)
+    def update(self, device, payload):
+        '''Updates the data for the device (+channel) with the most recent
+        measurement from the given payload.'''
+
+        if not len(payload.channels):
+            return
+
+        # TODO: find a device with multiple channels in one packet
+        channel = payload.channels[0]
+
+        item = self.getItem(device, channel)
+
+        # the most recent value
+        mag = payload.data[0][-1]
+
+        unit_str = self.format_unit(payload.unit)
+        mqflags_str = self.format_mqflags(payload.mq_flags)
         mag_str = self.format_mag(mag)
-        value = ' '.join([mag_str, unit_str, mqflags_str])
+        disp = ' '.join([mag_str, unit_str, mqflags_str])
+        item.setData(disp, QtCore.Qt.DisplayRole)
 
-        n = datetime.datetime.now().time()
-        now = '{:02}:{:02}:{:02}.{:03}'.format(
-                n.hour, n.minute, n.second, n.microsecond / 1000)
+class MultimeterDelegate(QtGui.QStyledItemDelegate):
+    '''Delegate to show the data items from a MeasurementDataModel.'''
 
-        self.lblValue.setText(value)
-        self.lblDevName.setText(device)
-        self.lblTime.setText(now)
+    def __init__(self, parent, font):
+        '''Initializes the delegate.
+
+        :param font: Font used for the description text, the value is drawn
+                     with a slightly bigger and bold variant of the font.
+        '''
+
+        super(self.__class__, self).__init__(parent)
+
+        self._nfont = font
+        self._bfont = QtGui.QFont(self._nfont)
+
+        self._bfont.setBold(True)
+        if self._bfont.pixelSize() != -1:
+            self._bfont.setPixelSize(self._bfont.pixelSize() * 1.8)
+        else:
+            self._bfont.setPointSizeF(self._bfont.pointSizeF() * 1.8)
+
+        fi = QtGui.QFontInfo(self._nfont)
+        self._nfontheight = fi.pixelSize()
+
+        fm = QtGui.QFontMetrics(self._bfont)
+        r = fm.boundingRect('-XX.XXXXXX X XX')
+        self._size = QtCore.QSize(r.width() * 1.2, r.height() * 3.5)
+
+    def sizeHint(self, option=None, index=None):
+        return self._size
+
+    def paint(self, painter, options, index):
+        value = index.data(QtCore.Qt.DisplayRole)
+        desc = index.data(MeasurementDataModel.descRole)
+
+        # description in the top left corner
+        painter.setFont(self._nfont)
+        p = options.rect.topLeft()
+        p += QtCore.QPoint(self._nfontheight, 2 * self._nfontheight)
+        painter.drawText(p, desc)
+
+        # value in the center
+        painter.setFont(self._bfont)
+        r = options.rect.adjusted(self._nfontheight, 2.5 * self._nfontheight,
+                0, 0)
+        painter.drawText(r, QtCore.Qt.AlignCenter, value)
+
+class EmptyMessageListView(QtGui.QListView):
+    '''List view that shows a message if the model im empty.'''
+
+    def __init__(self, message, parent=None):
+        super(self.__class__, self).__init__(parent)
+
+        self._message = message
+
+    def paintEvent(self, event):
+        m = self.model()
+        if m and m.rowCount():
+            super(self.__class__, self).paintEvent(event)
+            return
+
+        painter = QtGui.QPainter(self.viewport())
+        painter.drawText(self.rect(), QtCore.Qt.AlignCenter, self._message)
+
+class SigrokMeter(QtGui.QMainWindow):
+    '''The main window of the application.'''
+
+    def __init__(self, thread):
+        super(SigrokMeter, self).__init__()
+
+        self.delegate = MultimeterDelegate(self, self.font())
+        self.model = MeasurementDataModel(self)
+        self.model.rowsInserted.connect(self.modelRowsInserted)
+
+        self.setup_ui()
+
+        self.thread = thread
+        self.thread.measured.connect(self.model.update)
+        self.thread.error.connect(self.error)
+        self.thread.start()
+
+    def setup_ui(self):
+        self.setWindowTitle('sigrok-meter')
+        # resizing the listView below will increase this again
+        self.resize(10, 10)
+
+        p = os.path.abspath(os.path.dirname(__file__))
+        p = os.path.join(p, 'sigrok-logo-notext.png')
+        self.setWindowIcon(QtGui.QIcon(p))
+
+        actionQuit = QtGui.QAction(self)
+        actionQuit.setText('&Quit')
+        actionQuit.setIcon(QtGui.QIcon.fromTheme('application-exit'))
+        actionQuit.setShortcut('Ctrl+Q')
+        actionQuit.triggered.connect(self.close)
+
+        actionAbout = QtGui.QAction(self)
+        actionAbout.setText('&About')
+        actionAbout.setIcon(QtGui.QIcon.fromTheme('help-about'))
+        actionAbout.triggered.connect(self.show_about)
+
+        menubar = self.menuBar()
+        menuFile = menubar.addMenu('&File')
+        menuFile.addAction(actionQuit)
+        menuHelp = menubar.addMenu('&Help')
+        menuHelp.addAction(actionAbout)
+
+        self.listView = EmptyMessageListView('waiting for data...')
+        self.listView.setFrameShape(QtGui.QFrame.NoFrame)
+        self.listView.viewport().setBackgroundRole(QtGui.QPalette.Window)
+        self.listView.viewport().setAutoFillBackground(True)
+        self.listView.setMinimumWidth(260)
+        self.listView.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
+        self.listView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+        self.listView.setVerticalScrollMode(QtGui.QAbstractItemView.ScrollPerPixel)
+        self.listView.setItemDelegate(self.delegate)
+        self.listView.setModel(self.model)
+        self.listView.setUniformItemSizes(True)
+        self.listView.setMinimumSize(self.delegate.sizeHint())
+
+        self.setCentralWidget(self.listView)
+        self.centralWidget().setContentsMargins(0, 0, 0, 0)
+
+    @QtCore.Slot()
+    def show_about(self):
+        text = textwrap.dedent('''\
+            <div align="center">
+                <b>sigrok-meter</b><br/>
+                0.1.0<br/>
+                Using libsigrok {} (lib version {}).<br/>
+                <a href='http://www.sigrok.org'>
+                         http://www.sigrok.org</a><br/>
+                <br/>
+                This program comes with ABSOLUTELY NO WARRANTY;<br/>
+                for details visit
+                <a href='http://www.gnu.org/licenses/gpl.html'>
+                         http://www.gnu.org/licenses/gpl.html</a>
+            </div>
+        '''.format(self.thread.sr_pkg_version(), self.thread.sr_lib_version()))
+
+        QtGui.QMessageBox.about(self, 'About sigrok-meter', text)
 
     @QtCore.Slot(str)
     def error(self, msg):
         '''Error handler for the sampling thread.'''
         QtGui.QMessageBox.critical(self, 'Error', msg)
         self.close()
+
+    @QtCore.Slot(object, int, int)
+    def modelRowsInserted(self, parent, start, end):
+        '''Resizes the list view to the size of the content.'''
+
+        rows = self.model.rowCount()
+        dh = self.delegate.sizeHint().height()
+        self.listView.setMinimumHeight(dh * rows)
 
 if __name__ == '__main__':
     thread = SamplingThread(args['drivers'], args['loglevel'])
