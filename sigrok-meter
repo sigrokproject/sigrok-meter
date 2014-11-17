@@ -140,6 +140,7 @@ class SamplingThread(QtCore.QObject):
             self.sr_pkg_version = self.context.package_version
             self.sr_lib_version = self.context.lib_version
 
+        @QtCore.Slot()
         def start_sampling(self):
             devices = []
             for name, options in self.drivers:
@@ -281,6 +282,7 @@ class SigrokMeter(QtGui.QMainWindow):
 
         self.statusBar().setSizeGripEnabled(False)
 
+    @QtCore.Slot()
     def show_about(self):
         text = textwrap.dedent('''\
             <div align="center">
@@ -346,6 +348,7 @@ class SigrokMeter(QtGui.QMainWindow):
             return u'\u221E'
         return '{:f}'.format(mag)
 
+    @QtCore.Slot(object)
     def update(self, data):
         '''Updates the labels with new measurement values.'''
 
@@ -364,6 +367,7 @@ class SigrokMeter(QtGui.QMainWindow):
         self.lblDevName.setText(device)
         self.lblTime.setText(now)
 
+    @QtCore.Slot(str)
     def error(self, msg):
         '''Error handler for the sampling thread.'''
         QtGui.QMessageBox.critical(self, 'Error', msg)
