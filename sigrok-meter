@@ -173,6 +173,12 @@ class SamplingThread(QtCore.QObject):
                 self.session.stop()
 
         def callback(self, device, packet):
+            if not sr:
+                # In rare cases it can happen that the callback fires while
+                # the interpreter is shutting down. Then the sigrok module
+                # is already set to 'None'.
+                return
+
             if packet.type == sr.PacketType.ANALOG:
                 self.measured.emit(device, packet.payload)
 
