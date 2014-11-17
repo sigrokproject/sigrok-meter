@@ -230,7 +230,11 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
     def __init__(self, parent):
         super(self.__class__, self).__init__(parent)
 
-        # used in 'format_mag()' to check against
+        # Use the description text to sort the items for now, because the
+        # _idRole holds tuples, and using them to sort doesn't work.
+        self.setSortRole(MeasurementDataModel.descRole)
+
+        # Used in 'format_mag()' to check against.
         self.inf = float('inf')
 
     def format_unit(self, u):
@@ -308,6 +312,7 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
         item.setData(uid, MeasurementDataModel._idRole)
         item.setData(desc, MeasurementDataModel.descRole)
         self.appendRow(item)
+        self.sort(0)
         return item
 
     @QtCore.Slot(object, object)
