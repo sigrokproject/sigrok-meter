@@ -27,7 +27,7 @@ Requirements
 
  - git
  - Python (2 or 3)
- - PyQt4 or PySIDE
+ - PyQt4 or PySide
    (both need at least the QtCore and QtGui components)
  - libsigrok >= 0.3.0 (including the Python bindings)
 
