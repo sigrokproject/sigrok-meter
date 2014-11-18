@@ -182,10 +182,6 @@ class SamplingThread(QtCore.QObject):
             if packet.type == sr.PacketType.ANALOG:
                 self.measured.emit(device, packet.payload)
 
-            # wait a short time so that in any case we don't flood the GUI
-            # with new data (for example if the demo device is used)
-            self.thread().msleep(100)
-
     # signal used to start the worker across threads
     _start_signal = QtCore.Signal()
 
@@ -212,9 +208,7 @@ class SamplingThread(QtCore.QObject):
         '''Stops sampling and the background thread.'''
         self.worker.stop_sampling()
         self.thread.quit()
-        # the timeout is needed when the demo device is used, because it
-        # produces so much outstanding data that quitting takes a long time
-        self.thread.wait(500)
+        self.thread.wait()
 
     def sr_pkg_version(self):
         '''Returns the version number of the libsigrok package.'''
