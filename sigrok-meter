@@ -123,7 +123,7 @@ class SamplingThread(QtCore.QObject):
         '''Helper class that does the actual work in another thread.'''
 
         '''Signal emitted when new data arrived.'''
-        measured = QtCore.Signal(object, object)
+        measured = QtCore.Signal(object, object, object)
 
         '''Signal emmited in case of an error.'''
         error = QtCore.Signal(str)
@@ -175,8 +175,20 @@ class SamplingThread(QtCore.QObject):
                 # is already set to 'None'.
                 return
 
-            if packet.type == sr.PacketType.ANALOG:
-                self.measured.emit(device, packet.payload)
+            if packet.type != sr.PacketType.ANALOG:
+                return
+
+            if not len(packet.payload.channels):
+                return
+
+            # TODO: find a device with multiple channels in one packet
+            channel = packet.payload.channels[0]
+
+            # the most recent value
+            value = packet.payload.data[0][-1]
+
+            self.measured.emit(device, channel,
+                    (value, packet.payload.unit, packet.payload.mq_flags))
 
     # signal used to start the worker across threads
     _start_signal = QtCore.Signal()
@@ -222,7 +234,7 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
         # _idRole holds tuples, and using them to sort doesn't work.
         self.setSortRole(MeasurementDataModel.descRole)
 
-        # Used in 'format_mag()' to check against.
+        # Used in 'format_value()' to check against.
         self.inf = float('inf')
 
     def format_unit(self, u):
@@ -265,7 +277,7 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
         else:
             return ''
 
-    def format_mag(self, mag):
+    def format_value(self, mag):
         if mag == self.inf:
             return u'\u221E'
         return '{:f}'.format(mag)
@@ -303,26 +315,19 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
         self.sort(0)
         return item
 
-    @QtCore.Slot(object, object)
-    def update(self, device, payload):
+    @QtCore.Slot(object, object, object)
+    def update(self, device, channel, data):
         '''Updates the data for the device (+channel) with the most recent
         measurement from the given payload.'''
 
-        if not len(payload.channels):
-            return
-
-        # TODO: find a device with multiple channels in one packet
-        channel = payload.channels[0]
-
         item = self.getItem(device, channel)
 
-        # the most recent value
-        mag = payload.data[0][-1]
+        value, unit, mqflags = data
+        value_str = self.format_value(value)
+        unit_str = self.format_unit(unit)
+        mqflags_str = self.format_mqflags(mqflags)
 
-        unit_str = self.format_unit(payload.unit)
-        mqflags_str = self.format_mqflags(payload.mq_flags)
-        mag_str = self.format_mag(mag)
-        disp = ' '.join([mag_str, unit_str, mqflags_str])
+        disp = ' '.join([value_str, unit_str, mqflags_str])
         item.setData(disp, QtCore.Qt.DisplayRole)
 
 class MultimeterDelegate(QtGui.QStyledItemDelegate):
