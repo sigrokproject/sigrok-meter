@@ -22,12 +22,11 @@
 ##
 
 import argparse
-import re
 import sigrok.core as sr
 import sys
 import textwrap
 
-default_drivers = [('demo', {'analog_channels': 4})]
+default_drivers = ['demo:analog_channels=4']
 default_loglevel = sr.LogLevel.WARN
 
 def parse_cli():
@@ -63,17 +62,7 @@ def parse_cli():
     }
 
     if args.driver:
-        result['drivers'] = []
-        for d in args.driver:
-            m = re.match('(?P<name>[^:]+)(?P<opts>(:[^:=]+=[^:=]+)*)', d)
-            if not m:
-                sys.exit('error parsing option "{}"'.format(d))
-
-            opts = m.group('opts').split(':')[1:]
-            opts = [tuple(kv.split('=')) for kv in opts]
-            opts = dict(opts)
-
-            result['drivers'].append((m.group('name'), opts))
+        result['drivers'] = args.driver
 
     if args.loglevel != None:
         try:

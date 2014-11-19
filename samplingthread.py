@@ -20,6 +20,7 @@
 ##
 
 import qtcompat
+import re
 import sigrok.core as sr
 
 QtCore = qtcompat.QtCore
@@ -45,16 +46,53 @@ class SamplingThread(QtCore.QObject):
 
             self.sampling = False
 
+        def parse_driverstring(self, ds):
+            '''Dissects the driver string and returns a tuple consiting of
+            the driver name and the options (as a dictionary).'''
+
+            def parse_option(k, v):
+                '''Parse the value for a single option.'''
+                try:
+                    ck = sr.ConfigKey.get_by_identifier(k)
+                except:
+                    raise ValueError('No option named "{}".'.format(k))
+
+                try:
+                    val = ck.parse_string(v)
+                except:
+                    raise ValueError(
+                        'Invalid value "{}" for option "{}"'.format(v, k))
+
+                return (k, val)
+
+            m = re.match('(?P<name>[^:]+)(?P<opts>(:[^:=]+=[^:=]+)*)$', ds)
+            if not m:
+                raise ValueError('"{}" is not a valid driver string.'.format(ds))
+
+            opts = m.group('opts').split(':')[1:]
+            opts = [tuple(kv.split('=')) for kv in opts]
+            opts = [parse_option(k, v) for (k, v) in opts]
+            opts = dict(opts)
+
+            return (m.group('name'), opts)
+
         @QtCore.Slot()
         def start_sampling(self):
             devices = []
-            for name, options in self.drivers:
+            for ds in self.drivers:
                 try:
-                    dr = self.context.drivers[name]
-                    devices.append(dr.scan(**options)[0])
-                except:
+                    (name, opts) = self.parse_driverstring(ds)
+                    if not name in self.context.drivers:
+                        raise RuntimeError('No driver called "{}".'.format(name))
+
+                    driver = self.context.drivers[name]
+                    devs = driver.scan(**opts)
+                    if not devs:
+                        raise RuntimeError('No devices found.')
+                    devices.append(devs[0])
+                except Exception as e:
                     self.error.emit(
-                        'Unable to get device for driver "{}".'.format(name))
+                        'Error processing driver string:\n{}'.format(e))
                     return
 
             self.session = self.context.create_session()
