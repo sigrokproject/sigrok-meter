@@ -26,26 +26,36 @@ import sigrok.core as sr
 import sys
 import textwrap
 
-default_drivers = ['demo:analog_channels=4']
+default_drivers = [('demo:analog_channels=4', 'samplerate=4')]
 default_loglevel = 2
 
 def parse_cli():
     parser = argparse.ArgumentParser(
         description='Simple sigrok GUI for multimeters and dataloggers.',
         epilog=textwrap.dedent('''\
-            The DRIVER string is the same as for sigrok-cli(1).
+            The DRIVER string is the same as for sigrok-cli(1). The nth
+            CONFIG is applied to the nth DRIVER. If there are more drivers
+            than configs, the remaining drivers use the default configuration.
 
             examples:
 
               %(prog)s --driver tecpel-dmm-8061-ser:conn=/dev/ttyUSB0
 
               %(prog)s --driver uni-t-ut61e:conn=1a86.e008
+
+              %(prog)s --driver demo:analog_channels=1 \\
+                       --config samplerate=10
         '''),
         formatter_class=argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument('-d', '--driver',
         action='append',
+        default=[],
         help='The driver to use')
+    parser.add_argument('-c', '--config',
+        action='append',
+        default=[],
+        help='Specify device configuration options')
     parser.add_argument('-l', '--loglevel',
         type=int,
         default=default_loglevel,
@@ -56,8 +66,19 @@ def parse_cli():
         help='Force use of PySide (default is to use PyQt4)')
     args = parser.parse_args()
 
+    if len(args.config) > len(args.driver):
+        sys.exit('error: more configurations than drivers given')
+
+    # merge drivers and configurations into a list of tuples
+    setattr(args, 'drivers', [])
     if not args.driver:
-        args.driver = default_drivers
+        args.drivers = default_drivers
+        sys.stderr.write('no driver given, using demo driver\n')
+    if args.driver:
+        args.config.extend([''] * (len(args.driver) - len(args.config)))
+        args.drivers = zip(args.driver, args.config)
+    del args.driver
+    del args.config
 
     return args
 
@@ -78,7 +99,7 @@ if __name__ == '__main__':
         sys.exit('error: invalid log level')
 
     app = QtGui.QApplication([])
-    s = mainwindow.MainWindow(context, args.driver)
+    s = mainwindow.MainWindow(context, args.drivers)
     s.show()
 
     sys.exit(app.exec_())

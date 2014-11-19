@@ -46,9 +46,9 @@ class SamplingThread(QtCore.QObject):
 
             self.sampling = False
 
-        def parse_driverstring(self, ds):
-            '''Dissects the driver string and returns a tuple consiting of
-            the driver name and the options (as a dictionary).'''
+        def parse_configstring(self, cs):
+            '''Dissects a config string and returns the options as a
+            dictionary.'''
 
             def parse_option(k, v):
                 '''Parse the value for a single option.'''
@@ -61,25 +61,38 @@ class SamplingThread(QtCore.QObject):
                     val = ck.parse_string(v)
                 except:
                     raise ValueError(
-                        'Invalid value "{}" for option "{}"'.format(v, k))
+                        'Invalid value "{}" for option "{}".'.format(v, k))
 
                 return (k, val)
+
+            if not re.match('(([^:=]+=[^:=]+)(:[^:=]+=[^:=]+)*)?$', cs):
+                raise ValueError(
+                    '"{}" is not a valid configuration string.'.format(cs))
+
+            if not cs:
+                return {}
+
+            opts = cs.split(':')
+            opts = [tuple(kv.split('=')) for kv in opts]
+            opts = [parse_option(k, v) for (k, v) in opts]
+            return dict(opts)
+
+        def parse_driverstring(self, ds):
+            '''Dissects the driver string and returns a tuple consiting of
+            the driver name and the options (as a dictionary).'''
 
             m = re.match('(?P<name>[^:]+)(?P<opts>(:[^:=]+=[^:=]+)*)$', ds)
             if not m:
                 raise ValueError('"{}" is not a valid driver string.'.format(ds))
 
-            opts = m.group('opts').split(':')[1:]
-            opts = [tuple(kv.split('=')) for kv in opts]
-            opts = [parse_option(k, v) for (k, v) in opts]
-            opts = dict(opts)
-
-            return (m.group('name'), opts)
+            opts = m.group('opts')[1:]
+            return (m.group('name'), self.parse_configstring(opts))
 
         @QtCore.Slot()
         def start_sampling(self):
             devices = []
-            for ds in self.drivers:
+            for (ds, cs) in self.drivers:
+                # process driver string
                 try:
                     (name, opts) = self.parse_driverstring(ds)
                     if not name in self.context.drivers:
@@ -89,11 +102,24 @@ class SamplingThread(QtCore.QObject):
                     devs = driver.scan(**opts)
                     if not devs:
                         raise RuntimeError('No devices found.')
-                    devices.append(devs[0])
+
+                    device = devs[0]
                 except Exception as e:
                     self.error.emit(
                         'Error processing driver string:\n{}'.format(e))
                     return
+
+                # process configuration string
+                try:
+                    cfgs = self.parse_configstring(cs)
+                    for k, v in cfgs.items():
+                        device.config_set(sr.ConfigKey.get_by_identifier(k), v)
+                except Exception as e:
+                    self.error.emit(
+                        'Error processing configuration string:\n{}'.format(e))
+                    return
+
+                devices.append(device)
 
             self.session = self.context.create_session()
             for dev in devices:
