@@ -128,17 +128,13 @@ class SamplingThread(QtCore.QObject):
         '''Signal emmited in case of an error.'''
         error = QtCore.Signal(str)
 
-        def __init__(self, drivers, loglevel):
+        def __init__(self, context, drivers):
             super(self.__class__, self).__init__()
 
-            self.sampling = False
+            self.context = context
             self.drivers = drivers
 
-            self.context = sr.Context_create()
-            self.context.log_level = loglevel
-
-            self.sr_pkg_version = self.context.package_version
-            self.sr_lib_version = self.context.lib_version
+            self.sampling = False
 
         @QtCore.Slot()
         def start_sampling(self):
@@ -185,10 +181,10 @@ class SamplingThread(QtCore.QObject):
     # signal used to start the worker across threads
     _start_signal = QtCore.Signal()
 
-    def __init__(self, drivers, loglevel):
+    def __init__(self, context, drivers):
         super(self.__class__, self).__init__()
 
-        self.worker = self.Worker(drivers, loglevel)
+        self.worker = self.Worker(context, drivers)
         self.thread = QtCore.QThread()
         self.worker.moveToThread(self.thread)
 
@@ -209,14 +205,6 @@ class SamplingThread(QtCore.QObject):
         self.worker.stop_sampling()
         self.thread.quit()
         self.thread.wait()
-
-    def sr_pkg_version(self):
-        '''Returns the version number of the libsigrok package.'''
-        return self.worker.sr_pkg_version
-
-    def sr_lib_version(self):
-        '''Returns the version number fo the libsigrok library.'''
-        return self.worker.sr_lib_version
 
 class MeasurementDataModel(QtGui.QStandardItemModel):
     '''Model to hold the measured values.'''
@@ -404,8 +392,10 @@ class EmptyMessageListView(QtGui.QListView):
 class SigrokMeter(QtGui.QMainWindow):
     '''The main window of the application.'''
 
-    def __init__(self, thread):
+    def __init__(self, context, drivers):
         super(SigrokMeter, self).__init__()
+
+        self.context = context
 
         self.delegate = MultimeterDelegate(self, self.font())
         self.model = MeasurementDataModel(self)
@@ -413,7 +403,7 @@ class SigrokMeter(QtGui.QMainWindow):
 
         self.setup_ui()
 
-        self.thread = thread
+        self.thread = SamplingThread(self.context, drivers)
         self.thread.measured.connect(self.model.update)
         self.thread.error.connect(self.error)
         self.thread.start()
@@ -460,6 +450,10 @@ class SigrokMeter(QtGui.QMainWindow):
         self.setCentralWidget(self.listView)
         self.centralWidget().setContentsMargins(0, 0, 0, 0)
 
+    def closeEvent(self, event):
+        self.thread.stop()
+        event.accept()
+
     @QtCore.Slot()
     def show_about(self):
         text = textwrap.dedent('''\
@@ -475,7 +469,7 @@ class SigrokMeter(QtGui.QMainWindow):
                 <a href='http://www.gnu.org/licenses/gpl.html'>
                          http://www.gnu.org/licenses/gpl.html</a>
             </div>
-        '''.format(self.thread.sr_pkg_version(), self.thread.sr_lib_version()))
+        '''.format(self.context.package_version, self.context.lib_version))
 
         QtGui.QMessageBox.about(self, 'About sigrok-meter', text)
 
@@ -494,12 +488,11 @@ class SigrokMeter(QtGui.QMainWindow):
         self.listView.setMinimumHeight(dh * rows)
 
 if __name__ == '__main__':
-    thread = SamplingThread(args['drivers'], args['loglevel'])
+    context = sr.Context_create()
+    context.log_level = args['loglevel']
 
     app = QtGui.QApplication([])
-    s = SigrokMeter(thread)
+    s = SigrokMeter(context, args['drivers'])
     s.show()
 
-    r = app.exec_()
-    thread.stop()
-    sys.exit(r)
+    sys.exit(app.exec_())
