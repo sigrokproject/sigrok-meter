@@ -42,7 +42,7 @@ def load_modules(force_pyside):
             _QtCore.Signal = _QtCore.pyqtSignal
             _QtCore.Slot = _QtCore.pyqtSlot
         except:
-            sys.stderr.write('import of PyQt4 failed, using PySide\n')
+            sys.stderr.write('Import of PyQt4 failed, using PySide,\n')
             import PySide.QtCore as _QtCore
             import PySide.QtGui as _QtGui
 

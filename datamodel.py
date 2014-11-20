@@ -89,11 +89,11 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
         return '{:f}'.format(mag)
 
     def getItem(self, device, channel):
-        '''Returns the item for the device + channel combination from the model,
-        or creates a new item if no existing one matches.'''
+        '''Return the item for the device + channel combination from the
+        model, or create a new item if no existing one matches.'''
 
-        # unique identifier for the device + channel
-        # TODO: isn't there something better?
+        # Unique identifier for the device + channel.
+        # TODO: Isn't there something better?
         uid = (
             device.vendor,
             device.model,
@@ -102,15 +102,15 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
             channel.index
         )
 
-        # find the correct item in the model
+        # Find the correct item in the model.
         for row in range(self.rowCount()):
             item = self.item(row)
             rid = item.data(MeasurementDataModel._idRole)
-            rid = tuple(rid) # PySide returns a list
+            rid = tuple(rid) # PySide returns a list.
             if uid == rid:
                 return item
 
-        # nothing found, create a new item
+        # Nothing found, create a new item.
         desc = '{} {}, channel "{}"'.format(
                 device.vendor, device.model, channel.name)
 
@@ -123,7 +123,7 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
 
     @QtCore.Slot(object, object, object)
     def update(self, device, channel, data):
-        '''Updates the data for the device (+channel) with the most recent
+        '''Update the data for the device (+channel) with the most recent
         measurement from the given payload.'''
 
         item = self.getItem(device, channel)
@@ -141,7 +141,7 @@ class MultimeterDelegate(QtGui.QStyledItemDelegate):
     '''Delegate to show the data items from a MeasurementDataModel.'''
 
     def __init__(self, parent, font):
-        '''Initializes the delegate.
+        '''Initialize the delegate.
 
         :param font: Font used for the description text, the value is drawn
                      with a slightly bigger and bold variant of the font.
@@ -177,7 +177,7 @@ class MultimeterDelegate(QtGui.QStyledItemDelegate):
         value, unit = index.data(QtCore.Qt.DisplayRole)
         desc = index.data(MeasurementDataModel.descRole)
 
-        # description in the top left corner
+        # Description in the top left corner.
         painter.setFont(self._nfont)
         p = options.rect.topLeft()
         p += QtCore.QPoint(self._nfontheight, 2 * self._nfontheight)
@@ -185,14 +185,14 @@ class MultimeterDelegate(QtGui.QStyledItemDelegate):
 
         painter.setFont(self._bfont)
 
-        # value about in the center
+        # Value about in the center.
         p = options.rect.center()
         p += QtCore.QPoint(-3 * self._space_width, self._nfontheight)
         rect = QtCore.QRect(0, 0, self._value_width, 2 * self._nfontheight)
         rect.moveCenter(p)
         painter.drawText(rect, QtCore.Qt.AlignRight, value)
 
-        # unit right of the value
+        # Unit right of the value.
         rect.moveLeft(rect.right())
         rect.adjust(self._space_width, 0, 0, 0)
         painter.drawText(rect, QtCore.Qt.AlignLeft, unit)

@@ -66,7 +66,7 @@ class MainWindow(QtGui.QMainWindow):
 
     def setup_ui(self):
         self.setWindowTitle('sigrok-meter')
-        # resizing the listView below will increase this again
+        # Resizing the listView below will increase this again.
         self.resize(10, 10)
 
         p = os.path.abspath(os.path.dirname(__file__))
@@ -114,11 +114,12 @@ class MainWindow(QtGui.QMainWindow):
     def show_about(self):
         text = textwrap.dedent('''\
             <div align="center">
-                <b>sigrok-meter</b><br/>
-                0.1.0<br/>
-                Using libsigrok {} (lib version {}).<br/>
+                <b>sigrok-meter 0.1.0</b><br/><br/>
+                Using libsigrok {} (lib version {}).<br/><br/>
                 <a href='http://www.sigrok.org'>
                          http://www.sigrok.org</a><br/>
+                <br/>
+                License: GNU GPL, version 3 or later<br/>
                 <br/>
                 This program comes with ABSOLUTELY NO WARRANTY;<br/>
                 for details visit
@@ -137,8 +138,7 @@ class MainWindow(QtGui.QMainWindow):
 
     @QtCore.Slot(object, int, int)
     def modelRowsInserted(self, parent, start, end):
-        '''Resizes the list view to the size of the content.'''
-
+        '''Resize the list view to the size of the content.'''
         rows = self.model.rowCount()
         dh = self.delegate.sizeHint().height()
         self.listView.setMinimumHeight(dh * rows)

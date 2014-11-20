@@ -27,7 +27,7 @@ QtCore = qtcompat.QtCore
 QtGui = qtcompat.QtGui
 
 class SamplingThread(QtCore.QObject):
-    '''A class that handles the reception of sigrok packets in the background.'''
+    '''Class that handles the reception of sigrok packets in the background.'''
 
     class Worker(QtCore.QObject):
         '''Helper class that does the actual work in another thread.'''
@@ -47,7 +47,7 @@ class SamplingThread(QtCore.QObject):
             self.sampling = False
 
         def parse_configstring(self, cs):
-            '''Dissects a config string and returns the options as a
+            '''Dissect a config string and return the options as a
             dictionary.'''
 
             def parse_option(k, v):
@@ -78,7 +78,7 @@ class SamplingThread(QtCore.QObject):
             return dict(opts)
 
         def parse_driverstring(self, ds):
-            '''Dissects the driver string and returns a tuple consiting of
+            '''Dissect the driver string and return a tuple consisting of
             the driver name and the options (as a dictionary).'''
 
             m = re.match('(?P<name>[^:]+)(?P<opts>(:[^:=]+=[^:=]+)*)$', ds)
@@ -92,11 +92,11 @@ class SamplingThread(QtCore.QObject):
         def start_sampling(self):
             devices = []
             for (ds, cs) in self.drivers:
-                # process driver string
+                # Process driver string.
                 try:
                     (name, opts) = self.parse_driverstring(ds)
                     if not name in self.context.drivers:
-                        raise RuntimeError('No driver called "{}".'.format(name))
+                        raise RuntimeError('No driver named "{}".'.format(name))
 
                     driver = self.context.drivers[name]
                     devs = driver.scan(**opts)
@@ -109,7 +109,7 @@ class SamplingThread(QtCore.QObject):
                         'Error processing driver string:\n{}'.format(e))
                     return
 
-                # process configuration string
+                # Process configuration string.
                 try:
                     cfgs = self.parse_configstring(cs)
                     for k, v in cfgs.items():
@@ -157,13 +157,13 @@ class SamplingThread(QtCore.QObject):
             # TODO: find a device with multiple channels in one packet
             channel = packet.payload.channels[0]
 
-            # the most recent value
+            # The most recent value.
             value = packet.payload.data[0][-1]
 
             self.measured.emit(device, channel,
                     (value, packet.payload.unit, packet.payload.mq_flags))
 
-    # signal used to start the worker across threads
+    # Signal used to start the worker across threads.
     _start_signal = QtCore.Signal()
 
     def __init__(self, context, drivers):
@@ -175,18 +175,18 @@ class SamplingThread(QtCore.QObject):
 
         self._start_signal.connect(self.worker.start_sampling)
 
-        # expose the signals of the worker
+        # Expose the signals of the worker.
         self.measured = self.worker.measured
         self.error = self.worker.error
 
         self.thread.start()
 
     def start(self):
-        '''Starts sampling'''
+        '''Start sampling.'''
         self._start_signal.emit()
 
     def stop(self):
-        '''Stops sampling and the background thread.'''
+        '''Stop sampling and stop the background thread.'''
         self.worker.stop_sampling()
         self.thread.quit()
         self.thread.wait()
