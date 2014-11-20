@@ -32,9 +32,10 @@ def parse_cli():
     parser = argparse.ArgumentParser(
         description='Simple sigrok GUI for multimeters and dataloggers.',
         epilog=textwrap.dedent('''\
-            The DRIVER string is the same as for sigrok-cli(1). The nth
-            CONFIG is applied to the nth DRIVER. If there are more drivers
-            than configs, the remaining drivers use the default configuration.
+            The DRIVER string is the same as for sigrok-cli(1). Multiple
+            DRIVER and CONFIG items can be supplied. The nth CONFIG is applied
+            to the nth DRIVER. If there are more drivers than configs, the
+            remaining drivers use the default configuration.
 
             Examples:
 
@@ -44,6 +45,10 @@ def parse_cli():
 
               %(prog)s --driver demo:analog_channels=1 \\
                        --config samplerate=10
+
+              %(prog)s --driver voltcraft-k204:conn=/dev/ttyUSB0 \\
+                       --driver uni-t-ut61d:conn=1a86.e008 \\
+                       --driver uni-t-ut61e-ser:conn=/dev/ttyUSB1
         '''),
         formatter_class=argparse.RawDescriptionHelpFormatter)
 
