@@ -111,7 +111,7 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
                 return item
 
         # Nothing found, create a new item.
-        desc = '{} {}, channel "{}"'.format(
+        desc = '{} {}, {}'.format(
                 device.vendor, device.model, channel.name)
 
         item = QtGui.QStandardItem()
@@ -154,16 +154,16 @@ class MultimeterDelegate(QtGui.QStyledItemDelegate):
 
         self._bfont.setBold(True)
         if self._bfont.pixelSize() != -1:
-            self._bfont.setPixelSize(self._bfont.pixelSize() * 1.8)
+            self._bfont.setPixelSize(self._bfont.pixelSize() * 1.2)
         else:
-            self._bfont.setPointSizeF(self._bfont.pointSizeF() * 1.8)
+            self._bfont.setPointSizeF(self._bfont.pointSizeF() * 1.2)
 
         fi = QtGui.QFontInfo(self._nfont)
         self._nfontheight = fi.pixelSize()
 
         fm = QtGui.QFontMetrics(self._bfont)
         r = fm.boundingRect('-XX.XXXXXX X XX')
-        self._size = QtCore.QSize(r.width() * 1.4, r.height() * 3.5)
+        self._size = QtCore.QSize(r.width() * 1.4, r.height() * 2.2)
 
         # Values used to calculate the positions of the strings in the
         # 'paint()' function.
@@ -177,22 +177,7 @@ class MultimeterDelegate(QtGui.QStyledItemDelegate):
         value, unit = index.data(QtCore.Qt.DisplayRole)
         desc = index.data(MeasurementDataModel.descRole)
 
-        # Description in the top left corner.
         painter.setFont(self._nfont)
         p = options.rect.topLeft()
         p += QtCore.QPoint(self._nfontheight, 2 * self._nfontheight)
-        painter.drawText(p, desc)
-
-        painter.setFont(self._bfont)
-
-        # Value about in the center.
-        p = options.rect.center()
-        p += QtCore.QPoint(-3 * self._space_width, self._nfontheight)
-        rect = QtCore.QRect(0, 0, self._value_width, 2 * self._nfontheight)
-        rect.moveCenter(p)
-        painter.drawText(rect, QtCore.Qt.AlignRight, value)
-
-        # Unit right of the value.
-        rect.moveLeft(rect.right())
-        rect.adjust(self._space_width, 0, 0, 0)
-        painter.drawText(rect, QtCore.Qt.AlignLeft, unit)
+        painter.drawText(p, desc + ': ' + value + ' ' + unit)

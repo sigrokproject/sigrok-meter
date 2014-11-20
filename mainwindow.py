@@ -67,7 +67,7 @@ class MainWindow(QtGui.QMainWindow):
     def setup_ui(self):
         self.setWindowTitle('sigrok-meter')
         # Resizing the listView below will increase this again.
-        self.resize(10, 10)
+        self.resize(350, 10)
 
         p = os.path.abspath(os.path.dirname(__file__))
         p = os.path.join(p, 'sigrok-logo-notext.png')
