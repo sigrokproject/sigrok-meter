@@ -24,6 +24,7 @@ import argparse
 import sigrok.core as sr
 import sys
 import textwrap
+import signal
 
 default_drivers = [('demo:analog_channels=4', 'samplerate=4')]
 default_loglevel = 2
@@ -87,6 +88,8 @@ def parse_cli():
     return args
 
 if __name__ == '__main__':
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
     args = parse_cli()
 
     import qtcompat
