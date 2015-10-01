@@ -19,10 +19,16 @@
 ##
 
 import collections
+import itertools
 import qtcompat
 import sigrok.core as sr
 import time
 import util
+
+try:
+    from itertools import izip
+except ImportError:
+    izip = zip
 
 QtCore = qtcompat.QtCore
 QtGui = qtcompat.QtGui
@@ -39,6 +45,9 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
     '''Role used to store past samples.'''
     samplesRole = QtCore.Qt.UserRole + 3
 
+    '''Role used to store the color to draw the graph of the channel.'''
+    colorRole = QtCore.Qt.UserRole + 4
+
     def __init__(self, parent):
         super(self.__class__, self).__init__(parent)
 
@@ -48,6 +57,32 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
 
         # Used in 'format_value()' to check against.
         self.inf = float('inf')
+
+        # A generator for the colors of the channels.
+        self._colorgen = self._make_colorgen()
+
+    def _make_colorgen(self):
+        cols = [
+            QtGui.QColor(0x8F, 0x52, 0x02), # brown
+            QtGui.QColor(0xCC, 0x00, 0x00), # red
+            QtGui.QColor(0xF5, 0x79, 0x00), # orange
+            QtGui.QColor(0xED, 0xD4, 0x00), # yellow
+            QtGui.QColor(0x73, 0xD2, 0x16), # green
+            QtGui.QColor(0x34, 0x65, 0xA4), # blue
+            QtGui.QColor(0x75, 0x50, 0x7B)  # violet
+        ]
+
+        def myrepeat(g, n):
+            '''Repeats every element from 'g' 'n' times'.'''
+            for e in g:
+                for f in itertools.repeat(e, n):
+                    yield f
+
+        colorcycle = itertools.cycle(cols)
+        darkness = myrepeat(itertools.count(100, 10), len(cols))
+
+        for c, d in izip(colorcycle, darkness):
+            yield QtGui.QColor(c).darker(d)
 
     def format_mqflags(self, mqflags):
         if sr.QuantityFlag.AC in mqflags:
@@ -92,6 +127,7 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
         item.setData(uid, MeasurementDataModel.idRole)
         item.setData(desc, MeasurementDataModel.descRole)
         item.setData(collections.defaultdict(list), MeasurementDataModel.samplesRole)
+        item.setData(next(self._colorgen), MeasurementDataModel.colorRole)
         self.appendRow(item)
         self.sort(0)
         return item

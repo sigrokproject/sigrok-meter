@@ -53,7 +53,7 @@ class MainWindow(QtGui.QMainWindow):
     '''The main window of the application.'''
 
     # Number of seconds that the plots display.
-    BACKLOG = 10
+    BACKLOG = 30
 
     # Update interval of the plots in milliseconds.
     UPDATEINTERVAL = 100
@@ -160,7 +160,12 @@ class MainWindow(QtGui.QMainWindow):
             return self._curves[key]
 
         # create a new curve
-        curve = pyqtgraph.PlotDataItem()
+        curve = pyqtgraph.PlotDataItem(
+            antialias=True,
+            symbolPen=pyqtgraph.mkPen(QtGui.QColor(QtCore.Qt.black)),
+            symbolBrush=pyqtgraph.mkBrush(QtGui.QColor(QtCore.Qt.black)),
+            symbolSize=1
+        )
         plot.view.addItem(curve)
 
         self._curves[key] = curve
@@ -173,14 +178,17 @@ class MainWindow(QtGui.QMainWindow):
             idx = self.model.index(row, 0)
             deviceID = self.model.data(idx, datamodel.MeasurementDataModel.idRole)
             sampledict = self.model.data(idx, datamodel.MeasurementDataModel.samplesRole)
+            color = self.model.data(idx, datamodel.MeasurementDataModel.colorRole)
             for unit in sampledict:
-                self._updatePlot(deviceID, unit, sampledict[unit])
+                self._updatePlot(deviceID, unit, sampledict[unit], color)
 
-    def _updatePlot(self, deviceID, unit, samples):
-        '''Updates the curve of device 'deviceID' and 'unit' with 'samples'.'''
+    def _updatePlot(self, deviceID, unit, samples, color):
+        '''Updates the curve of device 'deviceID' and 'unit' with 'samples',
+        changes the color of the curve to 'color'.'''
 
         plot = self._getPlot(unit)
         curve = self._getCurve(plot, deviceID)
+        curve.setPen(pyqtgraph.mkPen(color=color, width=1))
 
         now = time.time()
 
