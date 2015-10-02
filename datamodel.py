@@ -160,41 +160,61 @@ class MultimeterDelegate(QtGui.QStyledItemDelegate):
     def __init__(self, parent, font):
         '''Initialize the delegate.
 
-        :param font: Font used for the description text, the value is drawn
-                     with a slightly bigger and bold variant of the font.
+        :param font: Font used for the text.
         '''
 
         super(self.__class__, self).__init__(parent)
 
         self._nfont = font
-        self._bfont = QtGui.QFont(self._nfont)
-
-        self._bfont.setBold(True)
-        if self._bfont.pixelSize() != -1:
-            self._bfont.setPixelSize(self._bfont.pixelSize() * 1.2)
-        else:
-            self._bfont.setPointSizeF(self._bfont.pointSizeF() * 1.2)
 
         fi = QtGui.QFontInfo(self._nfont)
         self._nfontheight = fi.pixelSize()
 
-        fm = QtGui.QFontMetrics(self._bfont)
+        fm = QtGui.QFontMetrics(self._nfont)
         r = fm.boundingRect('-XX.XXXXXX X XX')
-        self._size = QtCore.QSize(r.width() * 1.4, r.height() * 2.2)
 
-        # Values used to calculate the positions of the strings in the
-        # 'paint()' function.
-        self._space_width = fm.boundingRect('_').width()
-        self._value_width = fm.boundingRect('-XX.XXXXXX').width()
+        w = 1.4 * r.width() + 2 * self._nfontheight
+        h = 2.6 * self._nfontheight
+        self._size = QtCore.QSize(w, h)
 
     def sizeHint(self, option=None, index=None):
         return self._size
 
+    def _color_rect(self, outer):
+        '''Returns the dimensions of the clickable rectangle.'''
+        x1 = (outer.height() - self._nfontheight) / 2
+        r = QtCore.QRect(x1, x1, self._nfontheight, self._nfontheight)
+        r.translate(outer.topLeft())
+        return r
+
     def paint(self, painter, options, index):
         value, unit = index.data(QtCore.Qt.DisplayRole)
         desc = index.data(MeasurementDataModel.descRole)
+        color = index.data(MeasurementDataModel.colorRole)
 
         painter.setFont(self._nfont)
+
+        # Draw the clickable rectangle.
+        painter.fillRect(self._color_rect(options.rect), color)
+
+        # Draw the text
+        h = options.rect.height()
         p = options.rect.topLeft()
-        p += QtCore.QPoint(self._nfontheight, 2 * self._nfontheight)
+        p += QtCore.QPoint(h, (h + self._nfontheight) / 2 - 2)
         painter.drawText(p, desc + ': ' + value + ' ' + unit)
+
+    def editorEvent(self, event, model, options, index):
+        if type(event) is QtGui.QMouseEvent:
+            if event.type() == QtCore.QEvent.MouseButtonPress:
+                rect = self._color_rect(options.rect)
+                if rect.contains(event.x(), event.y()):
+                    c = index.data(MeasurementDataModel.colorRole)
+                    c = QtGui.QColorDialog.getColor(c, None,
+                        'Choose new color for channel')
+
+                    item = model.itemFromIndex(index)
+                    item.setData(c, MeasurementDataModel.colorRole)
+
+                    return True
+
+        return False
