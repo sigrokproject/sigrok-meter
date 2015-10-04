@@ -114,6 +114,7 @@ class MainWindow(QtGui.QMainWindow):
         self.listView.setMinimumSize(self.delegate.sizeHint())
 
         self.plotwidget = multiplotwidget.MultiPlotWidget(self)
+        self.plotwidget.plotHidden.connect(self._on_plotHidden)
 
         # Maps from 'unit' to the corresponding plot.
         self._plots = {}
@@ -174,33 +175,57 @@ class MainWindow(QtGui.QMainWindow):
     def timerEvent(self, event):
         '''Periodically updates all graphs.'''
 
+        self._updatePlots()
+
+    def _updatePlots(self):
+        '''Updates all plots.'''
+
+        # loop over all devices and channels
         for row in range(self.model.rowCount()):
             idx = self.model.index(row, 0)
-            deviceID = self.model.data(idx, datamodel.MeasurementDataModel.idRole)
-            sampledict = self.model.data(idx, datamodel.MeasurementDataModel.samplesRole)
-            color = self.model.data(idx, datamodel.MeasurementDataModel.colorRole)
-            for unit in sampledict:
-                self._updatePlot(deviceID, unit, sampledict[unit], color)
+            deviceID = self.model.data(idx,
+                            datamodel.MeasurementDataModel.idRole)
+            traces = self.model.data(idx,
+                            datamodel.MeasurementDataModel.tracesRole)
 
-    def _updatePlot(self, deviceID, unit, samples, color):
-        '''Updates the curve of device 'deviceID' and 'unit' with 'samples',
-        changes the color of the curve to 'color'.'''
+            for unit, trace in traces.items():
+                now = time.time()
 
-        plot = self._getPlot(unit)
-        curve = self._getCurve(plot, deviceID)
-        curve.setPen(pyqtgraph.mkPen(color=color, width=1))
+                # remove old samples
+                l = now - MainWindow.BACKLOG
+                while trace.samples and trace.samples[0][0] < l:
+                    trace.samples.pop(0)
 
-        now = time.time()
+                plot = self._getPlot(unit)
+                if not plot.visible:
+                    if trace.new:
+                        self.plotwidget.showPlot(plot)
 
-        # remove old samples
-        l = now - MainWindow.BACKLOG
-        while samples and samples[0][0] < l:
-            samples.pop(0)
+                if plot.visible:
+                    xdata = [s[0] - now for s in trace.samples]
+                    ydata = [s[1]       for s in trace.samples]
 
-        xdata = [s[0] - now for s in samples]
-        ydata = [s[1]       for s in samples]
+                    color = self.model.data(idx,
+                                datamodel.MeasurementDataModel.colorRole)
 
-        curve.setData(xdata, ydata)
+                    curve = self._getCurve(plot, deviceID)
+                    curve.setPen(pyqtgraph.mkPen(color=color))
+                    curve.setData(xdata, ydata)
+
+    @QtCore.Slot(multiplotwidget.Plot)
+    def _on_plotHidden(self, plot):
+        plotunit = [u for u, p in self._plots.items() if p == plot][0]
+
+        # Mark all traces of all devices/channels with the same unit as the
+        # plot as "old" ('trace.new = False'). As soon as a new sample arrives
+        # on one trace, the plot will be shown again
+        for row in range(self.model.rowCount()):
+            idx = self.model.index(row, 0)
+            traces = self.model.data(idx, datamodel.MeasurementDataModel.tracesRole)
+
+            for traceunit, trace in traces.items():
+                if traceunit == plotunit:
+                    trace.new = False
 
     def closeEvent(self, event):
         self.thread.stop()

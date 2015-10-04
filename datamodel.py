@@ -33,6 +33,17 @@ except ImportError:
 QtCore = qtcompat.QtCore
 QtGui = qtcompat.QtGui
 
+class Trace(object):
+    '''Class to hold the measured samples.'''
+
+    def __init__(self):
+        self.samples = []
+        self.new = False
+
+    def append(self, sample):
+        self.samples.append(sample)
+        self.new = True
+
 class MeasurementDataModel(QtGui.QStandardItemModel):
     '''Model to hold the measured values.'''
 
@@ -42,8 +53,8 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
     '''Role used to store the device vendor and model.'''
     descRole = QtCore.Qt.UserRole + 2
 
-    '''Role used to store past samples.'''
-    samplesRole = QtCore.Qt.UserRole + 3
+    '''Role used to store a dictionary with the traces'''
+    tracesRole = QtCore.Qt.UserRole + 3
 
     '''Role used to store the color to draw the graph of the channel.'''
     colorRole = QtCore.Qt.UserRole + 4
@@ -126,7 +137,7 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
         item = QtGui.QStandardItem()
         item.setData(uid, MeasurementDataModel.idRole)
         item.setData(desc, MeasurementDataModel.descRole)
-        item.setData(collections.defaultdict(list), MeasurementDataModel.samplesRole)
+        item.setData(collections.defaultdict(Trace), MeasurementDataModel.tracesRole)
         item.setData(next(self._colorgen), MeasurementDataModel.colorRole)
         self.appendRow(item)
         self.sort(0)
@@ -151,8 +162,8 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
         # The samples role is a dictionary that contains the old samples for each unit.
         # Should be trimmed periodically, otherwise it grows larger and larger.
         sample = (time.time(), value)
-        d = item.data(MeasurementDataModel.samplesRole)
-        d[unit].append(sample)
+        traces = item.data(MeasurementDataModel.tracesRole)
+        traces[unit].append(sample)
 
 class MultimeterDelegate(QtGui.QStyledItemDelegate):
     '''Delegate to show the data items from a MeasurementDataModel.'''
