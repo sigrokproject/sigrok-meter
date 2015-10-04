@@ -22,7 +22,6 @@ import collections
 import itertools
 import qtcompat
 import sigrok.core as sr
-import time
 import util
 
 try:
@@ -143,8 +142,8 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
         self.sort(0)
         return item
 
-    @QtCore.Slot(object, object, object)
-    def update(self, device, channel, data):
+    @QtCore.Slot(float, sr.classes.Device, sr.classes.Channel, tuple)
+    def update(self, timestamp, device, channel, data):
         '''Update the data for the device (+channel) with the most recent
         measurement from the given payload.'''
 
@@ -161,7 +160,7 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
 
         # The samples role is a dictionary that contains the old samples for each unit.
         # Should be trimmed periodically, otherwise it grows larger and larger.
-        sample = (time.time(), value)
+        sample = (timestamp, value)
         traces = item.data(MeasurementDataModel.tracesRole)
         traces[unit].append(sample)
 

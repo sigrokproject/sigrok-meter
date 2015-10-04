@@ -22,6 +22,7 @@
 import qtcompat
 import re
 import sigrok.core as sr
+import time
 
 QtCore = qtcompat.QtCore
 QtGui = qtcompat.QtGui
@@ -33,7 +34,7 @@ class SamplingThread(QtCore.QObject):
         '''Helper class that does the actual work in another thread.'''
 
         '''Signal emitted when new data arrived.'''
-        measured = QtCore.Signal(object, object, object)
+        measured = QtCore.Signal(float, sr.classes.Device, sr.classes.Channel, tuple)
 
         '''Signal emmited in case of an error.'''
         error = QtCore.Signal(str)
@@ -142,6 +143,8 @@ class SamplingThread(QtCore.QObject):
                 self.session.stop()
 
         def callback(self, device, packet):
+            now = time.time()
+
             if not sr:
                 # In rare cases it can happen that the callback fires while
                 # the interpreter is shutting down. Then the sigrok module
@@ -160,7 +163,7 @@ class SamplingThread(QtCore.QObject):
             # The most recent value.
             value = packet.payload.data[0][-1]
 
-            self.measured.emit(device, channel,
+            self.measured.emit(now, device, channel,
                     (value, packet.payload.unit, packet.payload.mq_flags))
 
     # Signal used to start the worker across threads.
