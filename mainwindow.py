@@ -20,13 +20,17 @@
 ##
 
 import datamodel
+import multiplotwidget
 import os.path
 import qtcompat
 import samplingthread
 import textwrap
+import time
+import util
 
 QtCore = qtcompat.QtCore
 QtGui = qtcompat.QtGui
+pyqtgraph = qtcompat.pyqtgraph
 
 class EmptyMessageListView(QtGui.QListView):
     '''List view that shows a message if the model im empty.'''
@@ -47,6 +51,12 @@ class EmptyMessageListView(QtGui.QListView):
 
 class MainWindow(QtGui.QMainWindow):
     '''The main window of the application.'''
+
+    # Number of seconds that the plots display.
+    BACKLOG = 10
+
+    # Update interval of the plots in milliseconds.
+    UPDATEINTERVAL = 100
 
     def __init__(self, context, drivers):
         super(self.__class__, self).__init__()
@@ -103,8 +113,86 @@ class MainWindow(QtGui.QMainWindow):
         self.listView.setUniformItemSizes(True)
         self.listView.setMinimumSize(self.delegate.sizeHint())
 
-        self.setCentralWidget(self.listView)
+        self.plotwidget = multiplotwidget.MultiPlotWidget(self)
+
+        # Maps from 'unit' to the corresponding plot.
+        self._plots = {}
+        # Maps from '(plot, device)' to the corresponding curve.
+        self._curves = {}
+
+        self.splitter = QtGui.QSplitter(QtCore.Qt.Horizontal);
+        self.splitter.addWidget(self.listView)
+        self.splitter.addWidget(self.plotwidget)
+        self.splitter.setStretchFactor(0, 0)
+        self.splitter.setStretchFactor(1, 1)
+
+        self.setCentralWidget(self.splitter)
         self.centralWidget().setContentsMargins(0, 0, 0, 0)
+        self.resize(800, 500)
+
+        self.startTimer(MainWindow.UPDATEINTERVAL)
+
+    def _getPlot(self, unit):
+        '''Looks up or creates a new plot for 'unit'.'''
+
+        if unit in self._plots:
+            return self._plots[unit]
+
+        # create a new plot for the unit
+        plot = self.plotwidget.addPlot()
+        plot.yaxis.setLabel(util.quantity_from_unit(unit), units=util.format_unit(unit))
+        plot.view.setXRange(-MainWindow.BACKLOG, 0, update=False)
+        plot.view.setYRange(-1, 1)
+        plot.view.enableAutoRange(axis=pyqtgraph.ViewBox.YAxis)
+        # lock to the range calculated by the view using additional padding,
+        # looks nicer this way
+        r = plot.view.viewRange()
+        plot.view.setLimits(xMin=r[0][0], xMax=r[0][1])
+
+        self._plots[unit] = plot
+        return plot
+
+    def _getCurve(self, plot, deviceID):
+        '''Looks up or creates a new curve for '(plot, deviceID)'.'''
+
+        key = (id(plot), deviceID)
+        if key in self._curves:
+            return self._curves[key]
+
+        # create a new curve
+        curve = pyqtgraph.PlotDataItem()
+        plot.view.addItem(curve)
+
+        self._curves[key] = curve
+        return curve
+
+    def timerEvent(self, event):
+        '''Periodically updates all graphs.'''
+
+        for row in range(self.model.rowCount()):
+            idx = self.model.index(row, 0)
+            deviceID = self.model.data(idx, datamodel.MeasurementDataModel.idRole)
+            sampledict = self.model.data(idx, datamodel.MeasurementDataModel.samplesRole)
+            for unit in sampledict:
+                self._updatePlot(deviceID, unit, sampledict[unit])
+
+    def _updatePlot(self, deviceID, unit, samples):
+        '''Updates the curve of device 'deviceID' and 'unit' with 'samples'.'''
+
+        plot = self._getPlot(unit)
+        curve = self._getCurve(plot, deviceID)
+
+        now = time.time()
+
+        # remove old samples
+        l = now - MainWindow.BACKLOG
+        while samples and samples[0][0] < l:
+            samples.pop(0)
+
+        xdata = [s[0] - now for s in samples]
+        ydata = [s[1]       for s in samples]
+
+        curve.setData(xdata, ydata)
 
     def closeEvent(self, event):
         self.thread.stop()

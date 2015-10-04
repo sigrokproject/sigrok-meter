@@ -50,3 +50,9 @@ def load_modules(force_pyside):
     global QtGui
     QtCore = _QtCore
     QtGui = _QtGui
+
+    import pyqtgraph as _pyqtgraph
+    import pyqtgraph.dockarea as _pyqtgraph_dockarea
+    global pyqtgraph
+    pyqtgraph = _pyqtgraph
+    pyqtgraph.dockarea = _pyqtgraph_dockarea

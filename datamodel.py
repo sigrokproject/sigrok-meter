@@ -18,8 +18,11 @@
 ## Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 ##
 
+import collections
 import qtcompat
 import sigrok.core as sr
+import time
+import util
 
 QtCore = qtcompat.QtCore
 QtGui = qtcompat.QtGui
@@ -28,52 +31,23 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
     '''Model to hold the measured values.'''
 
     '''Role used to identify and find the item.'''
-    _idRole = QtCore.Qt.UserRole + 1
+    idRole = QtCore.Qt.UserRole + 1
 
     '''Role used to store the device vendor and model.'''
     descRole = QtCore.Qt.UserRole + 2
+
+    '''Role used to store past samples.'''
+    samplesRole = QtCore.Qt.UserRole + 3
 
     def __init__(self, parent):
         super(self.__class__, self).__init__(parent)
 
         # Use the description text to sort the items for now, because the
-        # _idRole holds tuples, and using them to sort doesn't work.
+        # idRole holds tuples, and using them to sort doesn't work.
         self.setSortRole(MeasurementDataModel.descRole)
 
         # Used in 'format_value()' to check against.
         self.inf = float('inf')
-
-    def format_unit(self, u):
-        units = {
-            sr.Unit.VOLT:                   'V',
-            sr.Unit.AMPERE:                 'A',
-            sr.Unit.OHM:                   u'\u03A9',
-            sr.Unit.FARAD:                  'F',
-            sr.Unit.KELVIN:                 'K',
-            sr.Unit.CELSIUS:               u'\u00B0C',
-            sr.Unit.FAHRENHEIT:            u'\u00B0F',
-            sr.Unit.HERTZ:                  'Hz',
-            sr.Unit.PERCENTAGE:             '%',
-          # sr.Unit.BOOLEAN
-            sr.Unit.SECOND:                 's',
-            sr.Unit.SIEMENS:                'S',
-            sr.Unit.DECIBEL_MW:             'dBu',
-            sr.Unit.DECIBEL_VOLT:           'dBV',
-          # sr.Unit.UNITLESS
-            sr.Unit.DECIBEL_SPL:            'dB',
-          # sr.Unit.CONCENTRATION
-            sr.Unit.REVOLUTIONS_PER_MINUTE: 'rpm',
-            sr.Unit.VOLT_AMPERE:            'VA',
-            sr.Unit.WATT:                   'W',
-            sr.Unit.WATT_HOUR:              'Wh',
-            sr.Unit.METER_SECOND:           'm/s',
-            sr.Unit.HECTOPASCAL:            'hPa',
-            sr.Unit.HUMIDITY_293K:          '%rF',
-            sr.Unit.DEGREE:                u'\u00B0',
-            sr.Unit.HENRY:                  'H'
-        }
-
-        return units.get(u, '')
 
     def format_mqflags(self, mqflags):
         if sr.QuantityFlag.AC in mqflags:
@@ -105,7 +79,7 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
         # Find the correct item in the model.
         for row in range(self.rowCount()):
             item = self.item(row)
-            rid = item.data(MeasurementDataModel._idRole)
+            rid = item.data(MeasurementDataModel.idRole)
             rid = tuple(rid) # PySide returns a list.
             if uid == rid:
                 return item
@@ -115,8 +89,9 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
                 device.vendor, device.model, channel.name)
 
         item = QtGui.QStandardItem()
-        item.setData(uid, MeasurementDataModel._idRole)
+        item.setData(uid, MeasurementDataModel.idRole)
         item.setData(desc, MeasurementDataModel.descRole)
+        item.setData(collections.defaultdict(list), MeasurementDataModel.samplesRole)
         self.appendRow(item)
         self.sort(0)
         return item
@@ -130,12 +105,18 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
 
         value, unit, mqflags = data
         value_str = self.format_value(value)
-        unit_str = self.format_unit(unit)
+        unit_str = util.format_unit(unit)
         mqflags_str = self.format_mqflags(mqflags)
 
         # The display role is a tuple containing the value and the unit/flags.
         disp = (value_str, ' '.join([unit_str, mqflags_str]))
         item.setData(disp, QtCore.Qt.DisplayRole)
+
+        # The samples role is a dictionary that contains the old samples for each unit.
+        # Should be trimmed periodically, otherwise it grows larger and larger.
+        sample = (time.time(), value)
+        d = item.data(MeasurementDataModel.samplesRole)
+        d[unit].append(sample)
 
 class MultimeterDelegate(QtGui.QStyledItemDelegate):
     '''Delegate to show the data items from a MeasurementDataModel.'''
