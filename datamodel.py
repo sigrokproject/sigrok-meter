@@ -20,6 +20,7 @@
 
 import collections
 import itertools
+import math
 import qtcompat
 import sigrok.core as sr
 import util
@@ -65,9 +66,6 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
         # idRole holds tuples, and using them to sort doesn't work.
         self.setSortRole(MeasurementDataModel.descRole)
 
-        # Used in 'format_value()' to check against.
-        self.inf = float('inf')
-
         # A generator for the colors of the channels.
         self._colorgen = self._make_colorgen()
 
@@ -103,7 +101,7 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
             return ''
 
     def format_value(self, mag):
-        if mag == self.inf:
+        if math.isinf(mag):
             return u'\u221E'
         return '{:f}'.format(mag)
 
@@ -160,9 +158,10 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
 
         # The samples role is a dictionary that contains the old samples for each unit.
         # Should be trimmed periodically, otherwise it grows larger and larger.
-        sample = (timestamp, value)
-        traces = item.data(MeasurementDataModel.tracesRole)
-        traces[unit].append(sample)
+        if not math.isinf(value) and not math.isnan(value):
+            sample = (timestamp, value)
+            traces = item.data(MeasurementDataModel.tracesRole)
+            traces[unit].append(sample)
 
 class MultimeterDelegate(QtGui.QStyledItemDelegate):
     '''Delegate to show the data items from a MeasurementDataModel.'''
