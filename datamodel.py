@@ -74,11 +74,11 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
     def _make_colorgen(self):
         cols = [
             QtGui.QColor(0x8F, 0x52, 0x02), # brown
+            QtGui.QColor(0x73, 0xD2, 0x16), # green
             QtGui.QColor(0xCC, 0x00, 0x00), # red
+            QtGui.QColor(0x34, 0x65, 0xA4), # blue
             QtGui.QColor(0xF5, 0x79, 0x00), # orange
             QtGui.QColor(0xED, 0xD4, 0x00), # yellow
-            QtGui.QColor(0x73, 0xD2, 0x16), # green
-            QtGui.QColor(0x34, 0x65, 0xA4), # blue
             QtGui.QColor(0x75, 0x50, 0x7B)  # violet
         ]
 
