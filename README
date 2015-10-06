@@ -29,6 +29,7 @@ Requirements
  - Python (2 or 3)
  - PyQt4 or PySide
    (both need at least the QtCore and QtGui components)
+ - PyQtGraph
  - libsigrok >= 0.3.0 (including the Python bindings)
 
 
