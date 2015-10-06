@@ -18,7 +18,6 @@
 ## Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 ##
 
-import collections
 import itertools
 import math
 import qtcompat
@@ -134,7 +133,7 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
         item = QtGui.QStandardItem()
         item.setData(uid, MeasurementDataModel.idRole)
         item.setData(desc, MeasurementDataModel.descRole)
-        item.setData(collections.defaultdict(Trace), MeasurementDataModel.tracesRole)
+        item.setData({}, MeasurementDataModel.tracesRole)
         item.setData(next(self._colorgen), MeasurementDataModel.colorRole)
         self.appendRow(item)
         self.sort(0)
@@ -161,7 +160,14 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
         if not math.isinf(value) and not math.isnan(value):
             sample = (timestamp, value)
             traces = item.data(MeasurementDataModel.tracesRole)
+
+            # It's not possible to use 'collections.defaultdict' here, because
+            # PySide doesn't return the original type that was passed in.
+            if not (unit in traces):
+                traces[unit] = Trace()
             traces[unit].append(sample)
+
+            item.setData(traces, MeasurementDataModel.tracesRole)
 
 class MultimeterDelegate(QtGui.QStyledItemDelegate):
     '''Delegate to show the data items from a MeasurementDataModel.'''

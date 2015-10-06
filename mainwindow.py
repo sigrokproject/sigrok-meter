@@ -185,6 +185,7 @@ class MainWindow(QtGui.QMainWindow):
             idx = self.model.index(row, 0)
             deviceID = self.model.data(idx,
                             datamodel.MeasurementDataModel.idRole)
+            deviceID = tuple(deviceID) # PySide returns a list.
             traces = self.model.data(idx,
                             datamodel.MeasurementDataModel.tracesRole)
 
