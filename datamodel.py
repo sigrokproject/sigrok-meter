@@ -226,9 +226,11 @@ class MultimeterDelegate(QtGui.QStyledItemDelegate):
                     c = index.data(MeasurementDataModel.colorRole)
                     c = QtGui.QColorDialog.getColor(c, None,
                         'Choose new color for channel')
-
-                    item = model.itemFromIndex(index)
-                    item.setData(c, MeasurementDataModel.colorRole)
+                    if c.isValid():
+                        # False if cancel is pressed (resulting in a black
+                        # color)
+                        item = model.itemFromIndex(index)
+                        item.setData(c, MeasurementDataModel.colorRole)
 
                     return True
 
