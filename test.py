@@ -20,49 +20,51 @@
 ## Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 ##
 
+import sigrok.core as sr
 import unittest
 
 if __name__ == '__main__':
     import qtcompat
     qtcompat.load_modules(False)
-    import samplingthread
+    import acquisition
 
 class TestDriverstringParsing(unittest.TestCase):
     def setUp(self):
-        self.w = samplingthread.SamplingThread.Worker(None, None)
+        self.context = sr.Context_create()
+        self.a = acquisition.Acquisition(self.context)
 
     def test_valid_driverstring(self):
         self.assertEqual(
-            self.w.parse_driverstring('demo'),
+            self.a._parse_driverstring('demo'),
             ('demo', {}))
         self.assertEqual(
-            self.w.parse_driverstring('demo:samplerate=1'),
+            self.a._parse_driverstring('demo:samplerate=1'),
             ('demo', {'samplerate': 1}))
         self.assertEqual(
-            self.w.parse_driverstring('demo:samplerate=1:analog_channels=1'),
+            self.a._parse_driverstring('demo:samplerate=1:analog_channels=1'),
             ('demo', {'samplerate': 1, 'analog_channels': 1}))
 
     def test_invalid_driverstring(self):
         self.assertRaisesRegexp(ValueError, 'is not a valid driver string',
-            self.w.parse_driverstring, '')
+            self.a._parse_driverstring, '')
         self.assertRaisesRegexp(ValueError, 'is not a valid driver string',
-            self.w.parse_driverstring, ':')
+            self.a._parse_driverstring, ':')
         self.assertRaisesRegexp(ValueError, 'is not a valid driver string',
-            self.w.parse_driverstring, ':a')
+            self.a._parse_driverstring, ':a')
         self.assertRaisesRegexp(ValueError, 'is not a valid driver string',
-            self.w.parse_driverstring, 'd:a')
+            self.a._parse_driverstring, 'd:a')
         self.assertRaisesRegexp(ValueError, 'is not a valid driver string',
-            self.w.parse_driverstring, 'd:a=')
+            self.a._parse_driverstring, 'd:a=')
         self.assertRaisesRegexp(ValueError, 'is not a valid driver string',
-            self.w.parse_driverstring, 'd:a=:')
+            self.a._parse_driverstring, 'd:a=:')
         self.assertRaisesRegexp(ValueError, 'is not a valid driver string',
-            self.w.parse_driverstring, 'd:a=b:')
+            self.a._parse_driverstring, 'd:a=b:')
         self.assertRaisesRegexp(ValueError, 'is not a valid driver string',
-            self.w.parse_driverstring, 'd:=b:')
+            self.a._parse_driverstring, 'd:=b:')
         self.assertRaisesRegexp(ValueError, 'is not a valid driver string',
-            self.w.parse_driverstring, 'd:=:')
+            self.a._parse_driverstring, 'd:=:')
         self.assertRaisesRegexp(ValueError, 'is not a valid driver string',
-            self.w.parse_driverstring, 'd:=')
+            self.a._parse_driverstring, 'd:=')
 
 if __name__ == '__main__':
     unittest.main()

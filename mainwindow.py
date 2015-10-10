@@ -19,11 +19,11 @@
 ## Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 ##
 
+import acquisition
 import datamodel
 import multiplotwidget
 import os.path
 import qtcompat
-import samplingthread
 import textwrap
 import time
 import util
@@ -61,7 +61,12 @@ class MainWindow(QtGui.QMainWindow):
     def __init__(self, context, drivers):
         super(self.__class__, self).__init__()
 
+        # Used to coordinate the stopping of the acquisition and
+        # the closing of the window.
+        self._closing = False
+
         self.context = context
+        self.drivers = drivers
 
         self.delegate = datamodel.MultimeterDelegate(self, self.font())
         self.model = datamodel.MeasurementDataModel(self)
@@ -69,10 +74,22 @@ class MainWindow(QtGui.QMainWindow):
 
         self.setup_ui()
 
-        self.thread = samplingthread.SamplingThread(self.context, drivers)
-        self.thread.measured.connect(self.model.update)
-        self.thread.error.connect(self.error)
-        self.thread.start()
+        QtCore.QTimer.singleShot(0, self._start_acquisition)
+
+    def _start_acquisition(self):
+        self.acquisition = acquisition.Acquisition(self.context)
+        self.acquisition.measured.connect(self.model.update)
+        self.acquisition.stopped.connect(self._stopped)
+
+        try:
+            for (ds, cs) in self.drivers:
+                self.acquisition.add_device(ds, cs)
+        except Exception as e:
+            QtGui.QMessageBox.critical(self, 'Error', str(e))
+            self.close()
+            return
+
+        self.acquisition.start()
 
     def setup_ui(self):
         self.setWindowTitle('sigrok-meter')
@@ -132,6 +149,10 @@ class MainWindow(QtGui.QMainWindow):
         self.resize(800, 500)
 
         self.startTimer(MainWindow.UPDATEINTERVAL)
+
+    def stop(self):
+        self.acquisition.stop()
+        print(self.acquisition.is_running())
 
     def _getPlot(self, unit):
         '''Looks up or creates a new plot for 'unit'.'''
@@ -228,9 +249,18 @@ class MainWindow(QtGui.QMainWindow):
                 if traceunit == plotunit:
                     trace.new = False
 
+    @QtCore.Slot()
+    def _stopped(self):
+        if self._closing:
+            self.close()
+
     def closeEvent(self, event):
-        self.thread.stop()
-        event.accept()
+        if self.acquisition.is_running():
+            self._closing = True
+            self.acquisition.stop()
+            event.ignore()
+        else:
+            event.accept()
 
     @QtCore.Slot()
     def show_about(self):
@@ -251,12 +281,6 @@ class MainWindow(QtGui.QMainWindow):
         '''.format(self.context.package_version, self.context.lib_version))
 
         QtGui.QMessageBox.about(self, 'About sigrok-meter', text)
-
-    @QtCore.Slot(str)
-    def error(self, msg):
-        '''Error handler for the sampling thread.'''
-        QtGui.QMessageBox.critical(self, 'Error', msg)
-        self.close()
 
     @QtCore.Slot(object, int, int)
     def modelRowsInserted(self, parent, start, end):
