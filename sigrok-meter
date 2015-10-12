@@ -106,6 +106,10 @@ if __name__ == '__main__':
         sys.exit('Error: invalid log level.')
 
     app = QtGui.QApplication([])
+
+    import icons
+    icons.load_icons()
+
     s = mainwindow.MainWindow(context, args.drivers)
     s.show()
 

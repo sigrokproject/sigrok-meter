@@ -1,0 +1,50 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+<file alias="logo.png"       >icons/sigrok-logo-notext.png</file>
+</qresource>
+<qresource prefix="/icons">
+<file alias="about-16x16.png">icons/adwaita-icon-theme-3.18.0/16x16/actions/help-about.png</file>
+<file alias="about-22x22.png">icons/adwaita-icon-theme-3.18.0/22x22/actions/help-about.png</file>
+<file alias="about-24x24.png">icons/adwaita-icon-theme-3.18.0/24x24/actions/help-about.png</file>
+<file alias="about-32x32.png">icons/adwaita-icon-theme-3.18.0/32x32/actions/help-about.png</file>
+<file alias="about-48x48.png">icons/adwaita-icon-theme-3.18.0/48x48/actions/help-about.png</file>
+<file alias="add-16x16.png">icons/adwaita-icon-theme-3.18.0/16x16/actions/list-add.png</file>
+<file alias="add-22x22.png">icons/adwaita-icon-theme-3.18.0/22x22/actions/list-add.png</file>
+<file alias="add-24x24.png">icons/adwaita-icon-theme-3.18.0/24x24/actions/list-add.png</file>
+<file alias="add-32x32.png">icons/adwaita-icon-theme-3.18.0/32x32/actions/list-add.png</file>
+<file alias="add-48x48.png">icons/adwaita-icon-theme-3.18.0/48x48/actions/list-add.png</file>
+<file alias="exit-16x16.png">icons/adwaita-icon-theme-3.18.0/16x16/actions/application-exit.png</file>
+<file alias="exit-22x22.png">icons/adwaita-icon-theme-3.18.0/22x22/actions/application-exit.png</file>
+<file alias="exit-24x24.png">icons/adwaita-icon-theme-3.18.0/24x24/actions/application-exit.png</file>
+<file alias="exit-32x32.png">icons/adwaita-icon-theme-3.18.0/32x32/actions/application-exit.png</file>
+<file alias="exit-48x48.png">icons/adwaita-icon-theme-3.18.0/48x48/actions/application-exit.png</file>
+<file alias="graph-16x16.png">icons/adwaita-icon-theme-3.18.0/16x16/apps/utilities-system-monitor.png</file>
+<file alias="graph-22x22.png">icons/adwaita-icon-theme-3.18.0/22x22/apps/utilities-system-monitor.png</file>
+<file alias="graph-24x24.png">icons/adwaita-icon-theme-3.18.0/24x24/apps/utilities-system-monitor.png</file>
+<file alias="graph-256x256.png">icons/adwaita-icon-theme-3.18.0/256x256/apps/utilities-system-monitor.png</file>
+<file alias="graph-32x32.png">icons/adwaita-icon-theme-3.18.0/32x32/apps/utilities-system-monitor.png</file>
+<file alias="graph-48x48.png">icons/adwaita-icon-theme-3.18.0/48x48/apps/utilities-system-monitor.png</file>
+<file alias="log-16x16.png">icons/adwaita-icon-theme-3.18.0/16x16/apps/accessories-text-editor.png</file>
+<file alias="log-22x22.png">icons/adwaita-icon-theme-3.18.0/22x22/apps/accessories-text-editor.png</file>
+<file alias="log-24x24.png">icons/adwaita-icon-theme-3.18.0/24x24/apps/accessories-text-editor.png</file>
+<file alias="log-256x256.png">icons/adwaita-icon-theme-3.18.0/256x256/apps/accessories-text-editor.png</file>
+<file alias="log-32x32.png">icons/adwaita-icon-theme-3.18.0/32x32/apps/accessories-text-editor.png</file>
+<file alias="log-48x48.png">icons/adwaita-icon-theme-3.18.0/48x48/apps/accessories-text-editor.png</file>
+<file alias="preferences-16x16.png">icons/adwaita-icon-theme-3.18.0/16x16/categories/preferences-system.png</file>
+<file alias="preferences-22x22.png">icons/adwaita-icon-theme-3.18.0/22x22/categories/preferences-system.png</file>
+<file alias="preferences-24x24.png">icons/adwaita-icon-theme-3.18.0/24x24/categories/preferences-system.png</file>
+<file alias="preferences-256x256.png">icons/adwaita-icon-theme-3.18.0/256x256/categories/preferences-system.png</file>
+<file alias="preferences-32x32.png">icons/adwaita-icon-theme-3.18.0/32x32/categories/preferences-system.png</file>
+<file alias="preferences-48x48.png">icons/adwaita-icon-theme-3.18.0/48x48/categories/preferences-system.png</file>
+<file alias="start-16x16.png">icons/adwaita-icon-theme-3.18.0/16x16/actions/media-playback-start.png</file>
+<file alias="start-22x22.png">icons/adwaita-icon-theme-3.18.0/22x22/actions/media-playback-start.png</file>
+<file alias="start-24x24.png">icons/adwaita-icon-theme-3.18.0/24x24/actions/media-playback-start.png</file>
+<file alias="start-32x32.png">icons/adwaita-icon-theme-3.18.0/32x32/actions/media-playback-start.png</file>
+<file alias="start-48x48.png">icons/adwaita-icon-theme-3.18.0/48x48/actions/media-playback-start.png</file>
+<file alias="stop-16x16.png">icons/adwaita-icon-theme-3.18.0/16x16/actions/media-playback-stop.png</file>
+<file alias="stop-22x22.png">icons/adwaita-icon-theme-3.18.0/22x22/actions/media-playback-stop.png</file>
+<file alias="stop-24x24.png">icons/adwaita-icon-theme-3.18.0/24x24/actions/media-playback-stop.png</file>
+<file alias="stop-32x32.png">icons/adwaita-icon-theme-3.18.0/32x32/actions/media-playback-stop.png</file>
+<file alias="stop-48x48.png">icons/adwaita-icon-theme-3.18.0/48x48/actions/media-playback-stop.png</file>
+</qresource>
+</RCC>

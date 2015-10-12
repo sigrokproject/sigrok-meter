@@ -21,6 +21,7 @@
 
 import acquisition
 import datamodel
+import icons
 import multiplotwidget
 import os.path
 import qtcompat
@@ -70,9 +71,17 @@ class MainWindow(QtGui.QMainWindow):
 
         self.delegate = datamodel.MultimeterDelegate(self, self.font())
         self.model = datamodel.MeasurementDataModel(self)
-        self.model.rowsInserted.connect(self.modelRowsInserted)
 
-        self.setup_ui()
+        # Maps from 'unit' to the corresponding plot.
+        self._plots = {}
+        # Maps from '(plot, device)' to the corresponding curve.
+        self._curves = {}
+
+        self._setup_ui()
+
+        self._plot_update_timer = QtCore.QTimer()
+        self._plot_update_timer.setInterval(MainWindow.UPDATEINTERVAL)
+        self._plot_update_timer.timeout.connect(self._updatePlots)
 
         QtCore.QTimer.singleShot(0, self._start_acquisition)
 
@@ -89,70 +98,177 @@ class MainWindow(QtGui.QMainWindow):
             self.close()
             return
 
-        self.acquisition.start()
+        self.start_stop_acquisition()
 
-    def setup_ui(self):
+    def _setup_ui(self):
         self.setWindowTitle('sigrok-meter')
         # Resizing the listView below will increase this again.
         self.resize(350, 10)
 
-        p = os.path.abspath(os.path.dirname(__file__))
-        p = os.path.join(p, 'sigrok-logo-notext.png')
-        self.setWindowIcon(QtGui.QIcon(p))
+        self.setWindowIcon(QtGui.QIcon(':/logo.png'))
 
-        actionQuit = QtGui.QAction(self)
-        actionQuit.setText('&Quit')
-        actionQuit.setIcon(QtGui.QIcon.fromTheme('application-exit'))
-        actionQuit.setShortcut('Ctrl+Q')
-        actionQuit.triggered.connect(self.close)
+        self._setup_graphPage()
+        self._setup_addDevicePage()
+        self._setup_logPage()
+        self._setup_preferencesPage()
 
-        actionAbout = QtGui.QAction(self)
-        actionAbout.setText('&About')
-        actionAbout.setIcon(QtGui.QIcon.fromTheme('help-about'))
+        self._pages = [
+            self.graphPage,
+            self.addDevicePage,
+            self.logPage,
+            self.preferencesPage
+        ]
+
+        self.stackedWidget = QtGui.QStackedWidget(self)
+        for page in self._pages:
+            self.stackedWidget.addWidget(page)
+
+        self._setup_sidebar()
+
+        self.setCentralWidget(QtGui.QWidget())
+        self.centralWidget().setContentsMargins(0, 0, 0, 0)
+
+        layout = QtGui.QHBoxLayout(self.centralWidget())
+        layout.addWidget(self.sideBar)
+        layout.addWidget(self.stackedWidget)
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.resize(900, 550)
+
+    def _setup_sidebar(self):
+        self.sideBar = QtGui.QToolBar(self)
+        self.sideBar.setOrientation(QtCore.Qt.Vertical)
+
+        actionGraph = self.sideBar.addAction('Instantaneous Values and Graphs')
+        actionGraph.setCheckable(True)
+        actionGraph.setIcon(icons.graph)
+        actionGraph.triggered.connect(self.showGraphPage)
+
+        #actionAdd = self.sideBar.addAction('Add Device')
+        #actionAdd.setCheckable(True)
+        #actionAdd.setIcon(icons.add)
+        #actionAdd.triggered.connect(self.showAddDevicePage)
+
+        #actionLog = self.sideBar.addAction('Logs')
+        #actionLog.setCheckable(True)
+        #actionLog.setIcon(icons.log)
+        #actionLog.triggered.connect(self.showLogPage)
+
+        #actionPreferences = self.sideBar.addAction('Preferences')
+        #actionPreferences.setCheckable(True)
+        #actionPreferences.setIcon(icons.preferences)
+        #actionPreferences.triggered.connect(self.showPreferencesPage)
+
+        # make the buttons at the top exclusive
+        self.actionGroup = QtGui.QActionGroup(self)
+        self.actionGroup.addAction(actionGraph)
+        #self.actionGroup.addAction(actionAdd)
+        #self.actionGroup.addAction(actionLog)
+        #self.actionGroup.addAction(actionPreferences)
+
+        # show graph at startup
+        actionGraph.setChecked(True)
+
+        # fill space between buttons on the top and on the bottom
+        fill = QtGui.QWidget(self)
+        fill.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
+        self.sideBar.addWidget(fill)
+
+        self.actionStartStop = self.sideBar.addAction('Start Acquisition')
+        self.actionStartStop.setIcon(icons.start)
+        self.actionStartStop.triggered.connect(self.start_stop_acquisition)
+
+        actionAbout = self.sideBar.addAction('About')
+        actionAbout.setIcon(icons.about)
         actionAbout.triggered.connect(self.show_about)
 
-        menubar = self.menuBar()
-        menuFile = menubar.addMenu('&File')
-        menuFile.addAction(actionQuit)
-        menuHelp = menubar.addMenu('&Help')
-        menuHelp.addAction(actionAbout)
+        actionQuit = self.sideBar.addAction('Quit')
+        actionQuit.setIcon(icons.exit)
+        actionQuit.triggered.connect(self.close)
 
-        self.listView = EmptyMessageListView('waiting for data...')
-        self.listView.setFrameShape(QtGui.QFrame.NoFrame)
-        self.listView.viewport().setBackgroundRole(QtGui.QPalette.Window)
-        self.listView.viewport().setAutoFillBackground(True)
-        self.listView.setMinimumWidth(260)
-        self.listView.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
-        self.listView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
-        self.listView.setVerticalScrollMode(QtGui.QAbstractItemView.ScrollPerPixel)
-        self.listView.setItemDelegate(self.delegate)
-        self.listView.setModel(self.model)
-        self.listView.setUniformItemSizes(True)
-        self.listView.setMinimumSize(self.delegate.sizeHint())
+        s = self.style().pixelMetric(QtGui.QStyle.PM_LargeIconSize)
+        self.sideBar.setIconSize(QtCore.QSize(s, s))
+
+        self.sideBar.setStyleSheet('''
+            QToolBar {
+                background-color: white;
+                margin: 0px;
+                border: 0px;
+                border-right: 1px solid black;
+            }
+
+            QToolButton {
+                padding: 10px;
+                border: 0px;
+                border-right: 1px solid black;
+            }
+
+            QToolButton:checked,
+            QToolButton[checkable="false"]:hover {
+                background-color: #c0d0e8;
+            }
+        ''')
+
+    def _setup_graphPage(self):
+        listView = EmptyMessageListView('waiting for data...')
+        listView.setFrameShape(QtGui.QFrame.NoFrame)
+        listView.viewport().setBackgroundRole(QtGui.QPalette.Window)
+        listView.viewport().setAutoFillBackground(True)
+        listView.setMinimumWidth(260)
+        listView.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
+        listView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+        listView.setVerticalScrollMode(QtGui.QAbstractItemView.ScrollPerPixel)
+        listView.setItemDelegate(self.delegate)
+        listView.setModel(self.model)
+        listView.setUniformItemSizes(True)
+        listView.setMinimumSize(self.delegate.sizeHint())
 
         self.plotwidget = multiplotwidget.MultiPlotWidget(self)
         self.plotwidget.plotHidden.connect(self._on_plotHidden)
 
-        # Maps from 'unit' to the corresponding plot.
-        self._plots = {}
-        # Maps from '(plot, device)' to the corresponding curve.
-        self._curves = {}
+        self.graphPage = QtGui.QSplitter(QtCore.Qt.Horizontal, self)
+        self.graphPage.addWidget(listView)
+        self.graphPage.addWidget(self.plotwidget)
+        self.graphPage.setStretchFactor(0, 0)
+        self.graphPage.setStretchFactor(1, 1)
 
-        self.splitter = QtGui.QSplitter(QtCore.Qt.Horizontal);
-        self.splitter.addWidget(self.listView)
-        self.splitter.addWidget(self.plotwidget)
-        self.splitter.setStretchFactor(0, 0)
-        self.splitter.setStretchFactor(1, 1)
+    def _setup_addDevicePage(self):
+        self.addDevicePage = QtGui.QWidget(self)
+        layout = QtGui.QVBoxLayout(self.addDevicePage)
+        label = QtGui.QLabel('add device page')
+        layout.addWidget(label)
 
-        self.setCentralWidget(self.splitter)
-        self.centralWidget().setContentsMargins(0, 0, 0, 0)
-        self.resize(800, 500)
+    def _setup_logPage(self):
+        self.logPage = QtGui.QWidget(self)
+        layout = QtGui.QVBoxLayout(self.logPage)
+        label = QtGui.QLabel('log page')
+        layout.addWidget(label)
 
-        self.startTimer(MainWindow.UPDATEINTERVAL)
+    def _setup_preferencesPage(self):
+        self.preferencesPage = QtGui.QWidget(self)
+        layout = QtGui.QVBoxLayout(self.preferencesPage)
+        label = QtGui.QLabel('preferences page')
+        layout.addWidget(label)
 
-    def stop(self):
-        self.acquisition.stop()
-        print(self.acquisition.is_running())
+    def showPage(self, page):
+        self.stackedWidget.setCurrentIndex(self._pages.index(page))
+
+    @QtCore.Slot(bool)
+    def showGraphPage(self):
+        self.showPage(self.graphPage)
+
+    @QtCore.Slot(bool)
+    def showAddDevicePage(self):
+        self.showPage(self.addDevicePage)
+
+    @QtCore.Slot(bool)
+    def showLogPage(self):
+        self.showPage(self.logPage)
+
+    @QtCore.Slot(bool)
+    def showPreferencesPage(self):
+        self.showPage(self.preferencesPage)
 
     def _getPlot(self, unit):
         '''Looks up or creates a new plot for 'unit'.'''
@@ -177,7 +293,7 @@ class MainWindow(QtGui.QMainWindow):
     def _getCurve(self, plot, deviceID):
         '''Looks up or creates a new curve for '(plot, deviceID)'.'''
 
-        key = (id(plot), deviceID)
+        key = (plot, deviceID)
         if key in self._curves:
             return self._curves[key]
 
@@ -192,11 +308,6 @@ class MainWindow(QtGui.QMainWindow):
 
         self._curves[key] = curve
         return curve
-
-    def timerEvent(self, event):
-        '''Periodically updates all graphs.'''
-
-        self._updatePlots()
 
     def _updatePlots(self):
         '''Updates all plots.'''
@@ -252,15 +363,40 @@ class MainWindow(QtGui.QMainWindow):
     @QtCore.Slot()
     def _stopped(self):
         if self._closing:
+            # The acquisition was stopped by the 'closeEvent()', close the
+            # window again now that the acquisition has stopped.
             self.close()
 
     def closeEvent(self, event):
         if self.acquisition.is_running():
+            # Stop the acquisition before closing the window.
             self._closing = True
-            self.acquisition.stop()
+            self.start_stop_acquisition()
             event.ignore()
         else:
             event.accept()
+
+    @QtCore.Slot()
+    def start_stop_acquisition(self):
+        if self.acquisition.is_running():
+            self.acquisition.stop()
+            self._plot_update_timer.stop()
+            self.actionStartStop.setText('Start Acquisition')
+            self.actionStartStop.setIcon(icons.start)
+        else:
+            # before starting (again), remove all old samples and old curves
+            self.model.clear_samples()
+
+            for key in self._curves:
+                plot, _ = key
+                curve = self._curves[key]
+                plot.view.removeItem(curve)
+            self._curves = {}
+
+            self.acquisition.start()
+            self._plot_update_timer.start()
+            self.actionStartStop.setText('Stop Acquisition')
+            self.actionStartStop.setIcon(icons.stop)
 
     @QtCore.Slot()
     def show_about(self):
@@ -276,15 +412,11 @@ class MainWindow(QtGui.QMainWindow):
                 This program comes with ABSOLUTELY NO WARRANTY;<br/>
                 for details visit
                 <a href='http://www.gnu.org/licenses/gpl.html'>
-                         http://www.gnu.org/licenses/gpl.html</a>
+                         http://www.gnu.org/licenses/gpl.html</a><br/>
+                <br/>
+                Some icons by <a href='https://www.gnome.org'>
+                              the GNOME project</a>
             </div>
         '''.format(self.context.package_version, self.context.lib_version))
 
         QtGui.QMessageBox.about(self, 'About sigrok-meter', text)
-
-    @QtCore.Slot(object, int, int)
-    def modelRowsInserted(self, parent, start, end):
-        '''Resize the list view to the size of the content.'''
-        rows = self.model.rowCount()
-        dh = self.delegate.sizeHint().height()
-        self.listView.setMinimumHeight(dh * rows)

@@ -40,6 +40,7 @@ In order to get the sigrok-meter source code and build it, run:
 
  $ git clone git://sigrok.org/sigrok-meter
  $ cd sigrok-meter
+ $ make
  $ ./sigrok-meter
 
 For installing sigrok-meter:
@@ -63,6 +64,9 @@ the program as a whole is licensed under the terms of the GPLv3+ (e.g. also
 due to the fact that it links against GPLv3+ libraries).
 
 Please see the individual source files for the full list of copyright holders.
+
+The sigrok logo is licensed under the CC-BY-SA 3.0 license, the icons from the
+Adwaita icon set are dual licenced under CC-BY-SA 3.0 and LGPLv3.
 
 
 Mailing list

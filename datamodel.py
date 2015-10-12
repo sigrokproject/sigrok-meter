@@ -169,6 +169,13 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
 
             item.setData(traces, MeasurementDataModel.tracesRole)
 
+    def clear_samples(self):
+        '''Removes all old samples from the model.'''
+        for row in range(self.rowCount()):
+            idx = self.index(row, 0)
+            self.setData(idx, {},
+                MeasurementDataModel.tracesRole)
+
 class MultimeterDelegate(QtGui.QStyledItemDelegate):
     '''Delegate to show the data items from a MeasurementDataModel.'''
 

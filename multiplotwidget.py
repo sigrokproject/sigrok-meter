@@ -173,6 +173,7 @@ class MultiPlotWidget(pyqtgraph.GraphicsView):
 
         for m in [
             'addPlot',
+            'hidePlot',
             'showPlot'
         ]:
             setattr(self, m, getattr(self.multiPlotItem, m))
