@@ -30,16 +30,25 @@ class Setting(QtCore.QObject):
     '''Signal emitted when the setting has changed.'''
     changed = QtCore.Signal(object)
 
-    def __init__(self, key, default=None):
+    def __init__(self, key, default=None, conv=None):
+        '''Initializes the Settings object.
+
+        :param key: The key of the used 'QSettings' object.
+        :param default: Value returned if the setting doesn't already exist.
+        :param conv: Function used to convert the setting to the correct type.
+        '''
+
         super(self.__class__, self).__init__()
 
         self._key = key
         self._default = default
+        self._conv = conv
         self._value = None
 
     def value(self):
         s = QtCore.QSettings()
-        self._value = s.value(self._key, self._default)
+        v = s.value(self._key, self._default)
+        self._value = self._conv(v) if self._conv else v
         return self._value
 
     @QtCore.Slot(object)
@@ -71,3 +80,7 @@ def init():
     mainwindow.size = Setting('mainwindow/size', QtCore.QSize(900, 550))
     mainwindow.pos  = Setting('mainwindow/pos')
     globals()['mainwindow'] = mainwindow
+
+    graph = _SettingsGroup()
+    graph.backlog = Setting('graph/backlog', 30, conv=int)
+    globals()['graph'] = graph

@@ -54,9 +54,6 @@ class EmptyMessageListView(QtGui.QListView):
 class MainWindow(QtGui.QMainWindow):
     '''The main window of the application.'''
 
-    # Number of seconds that the plots display.
-    BACKLOG = 30
-
     # Update interval of the plots in milliseconds.
     UPDATEINTERVAL = 100
 
@@ -83,6 +80,8 @@ class MainWindow(QtGui.QMainWindow):
         self._plot_update_timer = QtCore.QTimer()
         self._plot_update_timer.setInterval(MainWindow.UPDATEINTERVAL)
         self._plot_update_timer.timeout.connect(self._updatePlots)
+
+        settings.graph.backlog.changed.connect(self.on_setting_graph_backlog_changed)
 
         QtCore.QTimer.singleShot(0, self._start_acquisition)
 
@@ -158,17 +157,17 @@ class MainWindow(QtGui.QMainWindow):
         #actionLog.setIcon(icons.log)
         #actionLog.triggered.connect(self.showLogPage)
 
-        #actionPreferences = self.sideBar.addAction('Preferences')
-        #actionPreferences.setCheckable(True)
-        #actionPreferences.setIcon(icons.preferences)
-        #actionPreferences.triggered.connect(self.showPreferencesPage)
+        actionPreferences = self.sideBar.addAction('Preferences')
+        actionPreferences.setCheckable(True)
+        actionPreferences.setIcon(icons.preferences)
+        actionPreferences.triggered.connect(self.showPreferencesPage)
 
         # make the buttons at the top exclusive
         self.actionGroup = QtGui.QActionGroup(self)
         self.actionGroup.addAction(actionGraph)
         #self.actionGroup.addAction(actionAdd)
         #self.actionGroup.addAction(actionLog)
-        #self.actionGroup.addAction(actionPreferences)
+        self.actionGroup.addAction(actionPreferences)
 
         # show graph at startup
         actionGraph.setChecked(True)
@@ -250,9 +249,20 @@ class MainWindow(QtGui.QMainWindow):
 
     def _setup_preferencesPage(self):
         self.preferencesPage = QtGui.QWidget(self)
-        layout = QtGui.QVBoxLayout(self.preferencesPage)
-        label = QtGui.QLabel('preferences page')
-        layout.addWidget(label)
+        layout = QtGui.QGridLayout(self.preferencesPage)
+
+        layout.addWidget(QtGui.QLabel('<b>Graph</b>'), 0, 0)
+        layout.addWidget(QtGui.QLabel('Recording time (seconds):'), 1, 0)
+
+        spin = QtGui.QSpinBox(self)
+        spin.setMinimum(10)
+        spin.setMaximum(3600)
+        spin.setSingleStep(10)
+        spin.setValue(settings.graph.backlog.value())
+        spin.valueChanged[int].connect(settings.graph.backlog.setValue)
+        layout.addWidget(spin, 1, 1)
+
+        layout.setRowStretch(layout.rowCount(), 100)
 
     def showPage(self, page):
         self.stackedWidget.setCurrentIndex(self._pages.index(page))
@@ -273,6 +283,21 @@ class MainWindow(QtGui.QMainWindow):
     def showPreferencesPage(self):
         self.showPage(self.preferencesPage)
 
+    @QtCore.Slot(int)
+    def on_setting_graph_backlog_changed(self, bl):
+        for unit in self._plots:
+            plot = self._plots[unit]
+
+            # Remove the limits first, otherwise the range update would
+            # be ignored.
+            plot.view.setLimits(xMin=None, xMax=None)
+
+            # Now change the range, and then use the calculated limits
+            # (also see the comment in '_getPlot()').
+            plot.view.setXRange(-bl, 0, update=True)
+            r = plot.view.viewRange()
+            plot.view.setLimits(xMin=r[0][0], xMax=r[0][1])
+
     def _getPlot(self, unit):
         '''Looks up or creates a new plot for 'unit'.'''
 
@@ -282,7 +307,7 @@ class MainWindow(QtGui.QMainWindow):
         # create a new plot for the unit
         plot = self.plotwidget.addPlot()
         plot.yaxis.setLabel(util.quantity_from_unit(unit), units=util.format_unit(unit))
-        plot.view.setXRange(-MainWindow.BACKLOG, 0, update=False)
+        plot.view.setXRange(-settings.graph.backlog.value(), 0, update=False)
         plot.view.setYRange(-1, 1)
         plot.view.enableAutoRange(axis=pyqtgraph.ViewBox.YAxis)
         # lock to the range calculated by the view using additional padding,
@@ -328,7 +353,7 @@ class MainWindow(QtGui.QMainWindow):
                 now = time.time()
 
                 # remove old samples
-                l = now - MainWindow.BACKLOG
+                l = now - settings.graph.backlog.value()
                 while trace.samples and trace.samples[0][0] < l:
                     trace.samples.pop(0)
 
