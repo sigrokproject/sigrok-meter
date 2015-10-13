@@ -107,6 +107,9 @@ if __name__ == '__main__':
 
     app = QtGui.QApplication([])
 
+    # Initialize modules that need a QApplication to exist.
+    import settings
+    settings.init()
     import icons
     icons.load_icons()
 

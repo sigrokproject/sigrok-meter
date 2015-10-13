@@ -25,6 +25,7 @@ import icons
 import multiplotwidget
 import os.path
 import qtcompat
+import settings
 import textwrap
 import time
 import util
@@ -134,7 +135,9 @@ class MainWindow(QtGui.QMainWindow):
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self.resize(900, 550)
+        self.resize(settings.mainwindow.size.value())
+        if settings.mainwindow.pos.value():
+            self.move(settings.mainwindow.pos.value())
 
     def _setup_sidebar(self):
         self.sideBar = QtGui.QToolBar(self)
@@ -374,6 +377,8 @@ class MainWindow(QtGui.QMainWindow):
             self.start_stop_acquisition()
             event.ignore()
         else:
+            settings.mainwindow.size.setValue(self.size())
+            settings.mainwindow.pos.setValue(self.pos())
             event.accept()
 
     @QtCore.Slot()
