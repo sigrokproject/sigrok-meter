@@ -21,11 +21,14 @@
 
 import acquisition
 import datamodel
+import datetime
 import icons
 import multiplotwidget
 import os.path
 import qtcompat
 import settings
+import sigrok.core as sr
+import sys
 import textwrap
 import time
 import util
@@ -67,6 +70,9 @@ class MainWindow(QtGui.QMainWindow):
         self.context = context
         self.drivers = drivers
 
+        self.logModel = QtGui.QStringListModel(self)
+        self.context.set_log_callback(self._log_callback)
+
         self.delegate = datamodel.MultimeterDelegate(self, self.font())
         self.model = datamodel.MeasurementDataModel(self)
 
@@ -99,6 +105,31 @@ class MainWindow(QtGui.QMainWindow):
             return
 
         self.start_stop_acquisition()
+
+    def _log_callback(self, level, message):
+        if level.id > settings.logging.level.value().id:
+            return
+
+        t = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
+        message = '[{}] sr: {}'.format(t, message)
+
+        sys.stderr.write(message + '\n')
+
+        scrollBar = self.logView.verticalScrollBar()
+        bottom = scrollBar.value() == scrollBar.maximum()
+
+        rows = self.logModel.rowCount()
+        maxrows = settings.logging.lines.value()
+        while rows > maxrows:
+            self.logModel.removeRows(0, 1)
+            rows -= 1
+
+        if self.logModel.insertRow(rows):
+            index = self.logModel.index(rows)
+            self.logModel.setData(index, message, QtCore.Qt.DisplayRole)
+
+            if bottom:
+                self.logView.scrollToBottom()
 
     def _setup_ui(self):
         self.setWindowTitle('sigrok-meter')
@@ -152,10 +183,10 @@ class MainWindow(QtGui.QMainWindow):
         #actionAdd.setIcon(icons.add)
         #actionAdd.triggered.connect(self.showAddDevicePage)
 
-        #actionLog = self.sideBar.addAction('Logs')
-        #actionLog.setCheckable(True)
-        #actionLog.setIcon(icons.log)
-        #actionLog.triggered.connect(self.showLogPage)
+        actionLog = self.sideBar.addAction('Logs')
+        actionLog.setCheckable(True)
+        actionLog.setIcon(icons.log)
+        actionLog.triggered.connect(self.showLogPage)
 
         actionPreferences = self.sideBar.addAction('Preferences')
         actionPreferences.setCheckable(True)
@@ -166,7 +197,7 @@ class MainWindow(QtGui.QMainWindow):
         self.actionGroup = QtGui.QActionGroup(self)
         self.actionGroup.addAction(actionGraph)
         #self.actionGroup.addAction(actionAdd)
-        #self.actionGroup.addAction(actionLog)
+        self.actionGroup.addAction(actionLog)
         self.actionGroup.addAction(actionPreferences)
 
         # show graph at startup
@@ -242,10 +273,14 @@ class MainWindow(QtGui.QMainWindow):
         layout.addWidget(label)
 
     def _setup_logPage(self):
+        self.logView = QtGui.QListView(self)
+        self.logView.setModel(self.logModel)
+        self.logView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
+        self.logView.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
+
         self.logPage = QtGui.QWidget(self)
         layout = QtGui.QVBoxLayout(self.logPage)
-        label = QtGui.QLabel('log page')
-        layout.addWidget(label)
+        layout.addWidget(self.logView)
 
     def _setup_preferencesPage(self):
         self.preferencesPage = QtGui.QWidget(self)
@@ -261,6 +296,41 @@ class MainWindow(QtGui.QMainWindow):
         spin.setValue(settings.graph.backlog.value())
         spin.valueChanged[int].connect(settings.graph.backlog.setValue)
         layout.addWidget(spin, 1, 1)
+
+        layout.addWidget(QtGui.QLabel('<b>Logging</b>'), 2, 0)
+        layout.addWidget(QtGui.QLabel('Log level:'), 3, 0)
+
+        cbox = QtGui.QComboBox()
+        descriptions = [
+            'no messages at all',
+            'error messages',
+            'warnings',
+            'informational messages',
+            'debug messages',
+            'very noisy debug messages'
+        ]
+        for i, desc in enumerate(descriptions):
+            level = sr.LogLevel.get(i)
+            text = '{} ({})'.format(level.name, desc)
+            # The numeric log level corresponds to the index of the text in the
+            # combo box. Should this ever change, we could use the 'userData'
+            # that can also be stored in the item.
+            cbox.addItem(text)
+
+        cbox.setCurrentIndex(settings.logging.level.value().id)
+        cbox.currentIndexChanged[int].connect(
+            (lambda i: settings.logging.level.setValue(sr.LogLevel.get(i))))
+        layout.addWidget(cbox, 3, 1)
+
+        layout.addWidget(QtGui.QLabel('Number of lines to log:'), 4, 0)
+
+        spin = QtGui.QSpinBox(self)
+        spin.setMinimum(100)
+        spin.setMaximum(10 * 1000 * 1000)
+        spin.setSingleStep(100)
+        spin.setValue(settings.logging.lines.value())
+        spin.valueChanged[int].connect(settings.logging.lines.setValue)
+        layout.addWidget(spin, 4, 1)
 
         layout.setRowStretch(layout.rowCount(), 100)
 

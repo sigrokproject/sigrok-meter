@@ -27,7 +27,6 @@ import textwrap
 import signal
 
 default_drivers = [('demo:analog_channels=4', 'samplerate=4')]
-default_loglevel = 2
 
 def parse_cli():
     parser = argparse.ArgumentParser(
@@ -63,7 +62,7 @@ def parse_cli():
         help='Specify device configuration options')
     parser.add_argument('-l', '--loglevel',
         type=int,
-        default=default_loglevel,
+        default=None,
         help='Set loglevel (5 is most verbose)')
     parser.add_argument('--pyside',
         action='store_true',
@@ -98,13 +97,6 @@ if __name__ == '__main__':
     QtGui = qtcompat.QtGui
     import mainwindow
 
-    context = sr.Context_create()
-    try:
-        loglevel = sr.LogLevel.get(args.loglevel)
-        context.log_level = loglevel
-    except:
-        sys.exit('Error: invalid log level.')
-
     app = QtGui.QApplication([])
 
     # Initialize modules that need a QApplication to exist.
@@ -112,6 +104,15 @@ if __name__ == '__main__':
     settings.init()
     import icons
     icons.load_icons()
+
+    context = sr.Context_create()
+
+    if args.loglevel != None:
+        try:
+            loglevel = sr.LogLevel.get(args.loglevel)
+            settings.logging.level.setValue(loglevel)
+        except:
+            sys.exit('Error: invalid log level.')
 
     s = mainwindow.MainWindow(context, args.drivers)
     s.show()

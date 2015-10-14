@@ -19,6 +19,7 @@
 ##
 
 import qtcompat
+import sigrok.core as sr
 
 QtCore = qtcompat.QtCore
 QtGui = qtcompat.QtGui
@@ -30,32 +31,34 @@ class Setting(QtCore.QObject):
     '''Signal emitted when the setting has changed.'''
     changed = QtCore.Signal(object)
 
-    def __init__(self, key, default=None, conv=None):
+    def __init__(self, key, default=None, s=None, d=None):
         '''Initializes the Settings object.
 
         :param key: The key of the used 'QSettings' object.
         :param default: Value returned if the setting doesn't already exist.
-        :param conv: Function used to convert the setting to the correct type.
+        :param s: Function used to serialize the value into a string.
+        :param d: Function used to convert a string into a value.
         '''
 
         super(self.__class__, self).__init__()
 
         self._key = key
         self._default = default
-        self._conv = conv
+        self._serialize = s if s else (lambda x: x)
+        self._deserialize = d if d else (lambda x: x)
         self._value = None
 
     def value(self):
         s = QtCore.QSettings()
         v = s.value(self._key, self._default)
-        self._value = self._conv(v) if self._conv else v
+        self._value = self._deserialize(v)
         return self._value
 
     @QtCore.Slot(object)
     def setValue(self, value):
         if value != self._value:
             s = QtCore.QSettings()
-            s.setValue(self._key, value)
+            s.setValue(self._key, self._serialize(value))
             s.sync()
             self._value = value
             self.changed.emit(self._value)
@@ -63,6 +66,28 @@ class Setting(QtCore.QObject):
 class _SettingsGroup(object):
     '''Dummy class to group multiple 'Setting' objects together.'''
     pass
+
+_default_loglevel = 'WARN'
+
+def _d_loglevel(s):
+    '''Converts a string into a sr.LogLevel.'''
+    d = {
+        'NONE': sr.LogLevel.NONE,
+        'ERR':  sr.LogLevel.ERR,
+        'WARN': sr.LogLevel.WARN,
+        'INFO': sr.LogLevel.INFO,
+        'DBG':  sr.LogLevel.DBG,
+        'SPEW': sr.LogLevel.SPEW
+    }
+
+    if not (s in d):
+        s = _default_loglevel
+
+    return d[s]
+
+def _s_loglevel(l):
+    '''Converts a sr.LogLevel into a string.'''
+    return l.name
 
 def init():
     '''Creates the 'Settings' objects for all known settings and places them
@@ -82,5 +107,11 @@ def init():
     globals()['mainwindow'] = mainwindow
 
     graph = _SettingsGroup()
-    graph.backlog = Setting('graph/backlog', 30, conv=int)
+    graph.backlog = Setting('graph/backlog', 30, d=int)
     globals()['graph'] = graph
+
+    logging = _SettingsGroup()
+    logging.level = Setting('logging/level', _default_loglevel,
+        s=_s_loglevel, d=_d_loglevel)
+    logging.lines = Setting('logging/lines', 1000, d=int)
+    globals()['logging'] = logging
