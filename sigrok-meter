@@ -21,7 +21,6 @@
 ##
 
 import argparse
-import sigrok.core as sr
 import sys
 import textwrap
 import signal
@@ -95,9 +94,15 @@ if __name__ == '__main__':
     qtcompat.load_modules(args.pyside)
     QtCore = qtcompat.QtCore
     QtGui = qtcompat.QtGui
-    import mainwindow
 
     app = QtGui.QApplication([])
+
+    try:
+        import sigrok.core as sr
+    except Exception as e:
+        QtGui.QMessageBox.critical(None, 'Error starting sigrok-meter',
+           'Unable to use the sigrok python bindings:\n{}'.format(e))
+        sys.exit(1)
 
     # Initialize modules that need a QApplication to exist.
     import settings
@@ -114,6 +119,7 @@ if __name__ == '__main__':
         except:
             sys.exit('Error: invalid log level.')
 
+    import mainwindow
     s = mainwindow.MainWindow(context, args.drivers)
     s.show()
 
