@@ -114,4 +114,5 @@ def init():
     logging.level = Setting('logging/level', _default_loglevel,
         s=_s_loglevel, d=_d_loglevel)
     logging.lines = Setting('logging/lines', 1000, d=int)
+    logging.filename = Setting('logging/filename', '')
     globals()['logging'] = logging

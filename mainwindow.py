@@ -273,14 +273,18 @@ class MainWindow(QtGui.QMainWindow):
         layout.addWidget(label)
 
     def _setup_logPage(self):
+        self.logPage = QtGui.QWidget(self)
+        layout = QtGui.QVBoxLayout(self.logPage)
+
         self.logView = QtGui.QListView(self)
         self.logView.setModel(self.logModel)
         self.logView.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
         self.logView.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
-
-        self.logPage = QtGui.QWidget(self)
-        layout = QtGui.QVBoxLayout(self.logPage)
         layout.addWidget(self.logView)
+
+        btn = QtGui.QPushButton('Save to file...', self)
+        btn.clicked.connect(self.on_save_log_clicked)
+        layout.addWidget(btn)
 
     def _setup_preferencesPage(self):
         self.preferencesPage = QtGui.QWidget(self)
@@ -497,6 +501,26 @@ class MainWindow(QtGui.QMainWindow):
             self._plot_update_timer.start()
             self.actionStartStop.setText('Stop Acquisition')
             self.actionStartStop.setIcon(icons.stop)
+
+    @QtCore.Slot()
+    def on_save_log_clicked(self):
+        filename = QtGui.QFileDialog.getSaveFileName(self,
+                    'Save Log File', settings.logging.filename.value())
+
+        if not filename:
+            # User pressed 'cancel'.
+            return
+
+        try:
+            with open(filename, 'w') as f:
+                for line in self.logModel.stringList():
+                    f.write(line)
+                    f.write('\n')
+        except Exception as e:
+            QtGui.QMessageBox.critical(self, 'Error saving log file',
+               'Unable to save the log messages:\n{}'.format(e))
+
+        settings.logging.filename.setValue(filename)
 
     @QtCore.Slot()
     def show_about(self):
