@@ -101,7 +101,7 @@ if __name__ == '__main__':
         import sigrok.core as sr
     except Exception as e:
         QtGui.QMessageBox.critical(None, 'Error starting sigrok-meter',
-           'Unable to use the sigrok python bindings:\n{}'.format(e))
+           'Unable to use the sigrok Python bindings:\n{}.'.format(e))
         sys.exit(1)
 
     # Initialize modules that need a QApplication to exist.

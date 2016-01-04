@@ -38,7 +38,7 @@ QtGui = qtcompat.QtGui
 pyqtgraph = qtcompat.pyqtgraph
 
 class EmptyMessageListView(QtGui.QListView):
-    '''List view that shows a message if the model im empty.'''
+    '''List view that shows a message if the model is empty.'''
 
     def __init__(self, message, parent=None):
         super(self.__class__, self).__init__(parent)
@@ -193,17 +193,17 @@ class MainWindow(QtGui.QMainWindow):
         actionPreferences.setIcon(icons.preferences)
         actionPreferences.triggered.connect(self.showPreferencesPage)
 
-        # make the buttons at the top exclusive
+        # Make the buttons at the top exclusive.
         self.actionGroup = QtGui.QActionGroup(self)
         self.actionGroup.addAction(actionGraph)
         #self.actionGroup.addAction(actionAdd)
         self.actionGroup.addAction(actionLog)
         self.actionGroup.addAction(actionPreferences)
 
-        # show graph at startup
+        # Show graph at startup.
         actionGraph.setChecked(True)
 
-        # fill space between buttons on the top and on the bottom
+        # Fill space between buttons on the top and on the bottom.
         fill = QtGui.QWidget(self)
         fill.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
         self.sideBar.addWidget(fill)
@@ -378,14 +378,14 @@ class MainWindow(QtGui.QMainWindow):
         if unit in self._plots:
             return self._plots[unit]
 
-        # create a new plot for the unit
+        # Create a new plot for the unit.
         plot = self.plotwidget.addPlot()
         plot.yaxis.setLabel(util.quantity_from_unit(unit), units=util.format_unit(unit))
         plot.view.setXRange(-settings.graph.backlog.value(), 0, update=False)
         plot.view.setYRange(-1, 1)
         plot.view.enableAutoRange(axis=pyqtgraph.ViewBox.YAxis)
-        # lock to the range calculated by the view using additional padding,
-        # looks nicer this way
+        # Lock to the range calculated by the view using additional padding,
+        # looks nicer this way.
         r = plot.view.viewRange()
         plot.view.setLimits(xMin=r[0][0], xMax=r[0][1])
 
@@ -399,7 +399,7 @@ class MainWindow(QtGui.QMainWindow):
         if key in self._curves:
             return self._curves[key]
 
-        # create a new curve
+        # Create a new curve.
         curve = pyqtgraph.PlotDataItem(
             antialias=True,
             symbolPen=pyqtgraph.mkPen(QtGui.QColor(QtCore.Qt.black)),
@@ -414,7 +414,7 @@ class MainWindow(QtGui.QMainWindow):
     def _updatePlots(self):
         '''Updates all plots.'''
 
-        # loop over all devices and channels
+        # Loop over all devices and channels.
         for row in range(self.model.rowCount()):
             idx = self.model.index(row, 0)
             deviceID = self.model.data(idx,
@@ -426,7 +426,7 @@ class MainWindow(QtGui.QMainWindow):
             for unit, trace in traces.items():
                 now = time.time()
 
-                # remove old samples
+                # Remove old samples.
                 l = now - settings.graph.backlog.value()
                 while trace.samples and trace.samples[0][0] < l:
                     trace.samples.pop(0)
@@ -453,7 +453,7 @@ class MainWindow(QtGui.QMainWindow):
 
         # Mark all traces of all devices/channels with the same unit as the
         # plot as "old" ('trace.new = False'). As soon as a new sample arrives
-        # on one trace, the plot will be shown again
+        # on one trace, the plot will be shown again.
         for row in range(self.model.rowCount()):
             idx = self.model.index(row, 0)
             traces = self.model.data(idx, datamodel.MeasurementDataModel.tracesRole)
@@ -488,7 +488,7 @@ class MainWindow(QtGui.QMainWindow):
             self.actionStartStop.setText('Start Acquisition')
             self.actionStartStop.setIcon(icons.start)
         else:
-            # before starting (again), remove all old samples and old curves
+            # Before starting (again), remove all old samples and old curves.
             self.model.clear_samples()
 
             for key in self._curves:

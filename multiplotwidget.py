@@ -24,7 +24,7 @@ QtCore = qtcompat.QtCore
 QtGui = qtcompat.QtGui
 pyqtgraph = qtcompat.pyqtgraph
 
-# black foreground on white background
+# Black foreground on white background.
 pyqtgraph.setConfigOption('background', 'w')
 pyqtgraph.setConfigOption('foreground', 'k')
 
@@ -103,7 +103,7 @@ class MultiPlotItem(pyqtgraph.GraphicsWidget):
     def _rowNumber(self, plot):
         '''Returns the number of the first row a plot occupies.'''
 
-        # Every plot takes up two rows
+        # Every plot takes up two rows.
         return 2 * self._plots.index(plot)
 
     @QtCore.Slot()

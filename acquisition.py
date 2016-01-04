@@ -131,7 +131,7 @@ class Acquisition(QtCore.QObject):
         if not len(packet.payload.channels):
             return
 
-        # TODO: find a device with multiple channels in one packet
+        # TODO: Find a device with multiple channels in one packet.
         channel = packet.payload.channels[0]
 
         # The most recent value.

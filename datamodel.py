@@ -52,7 +52,7 @@ class MeasurementDataModel(QtGui.QStandardItemModel):
     '''Role used to store the device vendor and model.'''
     descRole = QtCore.Qt.UserRole + 2
 
-    '''Role used to store a dictionary with the traces'''
+    '''Role used to store a dictionary with the traces.'''
     tracesRole = QtCore.Qt.UserRole + 3
 
     '''Role used to store the color to draw the graph of the channel.'''
@@ -235,7 +235,7 @@ class MultimeterDelegate(QtGui.QStyledItemDelegate):
                         'Choose new color for channel')
                     if c.isValid():
                         # False if cancel is pressed (resulting in a black
-                        # color)
+                        # color).
                         item = model.itemFromIndex(index)
                         item.setData(c, MeasurementDataModel.colorRole)
 
