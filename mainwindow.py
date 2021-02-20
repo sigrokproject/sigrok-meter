@@ -69,7 +69,7 @@ class MainWindow(QtGui.QMainWindow):
         self.context = context
         self.drivers = drivers
 
-        self.logModel = QtGui.QStringListModel(self)
+        self.logModel = QtCore.QStringListModel(self)
         self.context.set_log_callback(self._log_callback)
 
         self.delegate = datamodel.MultimeterDelegate(self, self.font())

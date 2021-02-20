@@ -24,13 +24,21 @@ ifneq ($(MAKECMDGOALS),clean)
     ifeq (0,$(shell which pyside-rcc >/dev/null 2>&1; echo $$?))
       RCC = pyside-rcc
     else
-      $(error "resource compiler not found")
+      ifeq (0,$(shell which pyside2-rcc >/dev/null 2>&1; echo $$?))
+        RCC = pyside2-rcc
+      else
+        $(error "resource compiler not found")
+      endif
     endif
   endif
 endif
 
 resources.py: resources.qrc
+ifeq ($(RCC),pyside2-rcc)
+	$(RCC) -o $@ $<
+else
 	$(RCC) -py3 -o $@ $<
+endif
 
 .PHONY: clean
 clean:

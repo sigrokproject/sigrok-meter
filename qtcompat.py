@@ -21,8 +21,8 @@ import sys
 
 def load_modules(force_pyside):
     if force_pyside:
-        import PySide.QtCore as _QtCore
-        import PySide.QtGui as _QtGui
+        import PySide2.QtCore as _QtCore
+        import PySide2.QtGui as _QtGui
     else:
         try:
             # Use version 2 API in all cases, because that's what PySide uses.
@@ -44,8 +44,8 @@ def load_modules(force_pyside):
             _QtCore.Slot = _QtCore.pyqtSlot
         except:
             sys.stderr.write('Import of PyQt4 failed, using PySide,\n')
-            import PySide.QtCore as _QtCore
-            import PySide.QtGui as _QtGui
+            import PySide2.QtCore as _QtCore
+            import PySide2.QtGui as _QtGui
 
     global QtCore
     global QtGui
