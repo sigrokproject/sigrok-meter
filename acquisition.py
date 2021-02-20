@@ -98,13 +98,13 @@ class Acquisition(QtCore.QObject):
 
         device = devs[0]
 
+        self.session.add_device(device)
+        device.open()
+
         # Process configuration string.
         cfgs = self._parse_configstring(configstring)
         for k, v in cfgs.items():
             device.config_set(sr.ConfigKey.get_by_identifier(k), v)
-
-        self.session.add_device(device)
-        device.open()
 
     def is_running(self):
         '''Return whether the session is running.'''
