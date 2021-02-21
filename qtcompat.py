@@ -23,6 +23,7 @@ def load_modules(force_pyside):
     if force_pyside:
         import PySide2.QtCore as _QtCore
         import PySide2.QtGui as _QtGui
+        import PySide2.QtWidgets as _QtWidgets
     else:
         try:
             # Use version 2 API in all cases, because that's what PySide uses.
@@ -46,11 +47,14 @@ def load_modules(force_pyside):
             sys.stderr.write('Import of PyQt4 failed, using PySide,\n')
             import PySide2.QtCore as _QtCore
             import PySide2.QtGui as _QtGui
+            import PySide2.QtWidgets as _QtWidgets
 
     global QtCore
     global QtGui
+    global QtWidgets
     QtCore = _QtCore
     QtGui = _QtGui
+    QtWidgets = _QtWidgets
 
     import pyqtgraph as _pyqtgraph
     import pyqtgraph.dockarea as _pyqtgraph_dockarea

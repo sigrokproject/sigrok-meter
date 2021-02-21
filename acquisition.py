@@ -24,6 +24,7 @@ import sigrok.core as sr
 import time
 
 QtCore = qtcompat.QtCore
+QtWidgets = qtcompat.QtWidgets
 
 class Acquisition(QtCore.QObject):
     '''Class that handles the sigrok session and the reception of data.'''
@@ -114,6 +115,7 @@ class Acquisition(QtCore.QObject):
     def start(self):
         '''Start the session.'''
         self.session.start()
+        self.session.run()
 
     @QtCore.Slot()
     def stop(self):
@@ -138,6 +140,14 @@ class Acquisition(QtCore.QObject):
 
         self.measured.emit(now, device, channel,
                 (value, packet.payload.unit, packet.payload.mq_flags))
+
+        # Process pending events to keep the UI responsive.
+        # The most basic solution is to explicitly ask Qt to process pending
+        # events at some point in the computation. To do this, you have to
+        # call `QCoreApplication::processEvents()` periodically.
+        # https://doc.qt.io/archives/qq/qq27-responsive-guis.html#manualeventprocessing
+        # https://doc.qt.io/qt-5/qcoreapplication.html#processEvents
+        QtWidgets.QApplication.processEvents()
 
     def _stopped_callback(self, **kwargs):
         self.stopped.emit()
